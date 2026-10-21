@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { dice, dialogs, makeAgent, chat, preset, hooks, settingDefs, asPlayer, asGM } from "./mock-foundry.mjs";
 
-preset("welcomed", "1.6.1");
+preset("welcomed", "1.6.2");
 preset("backups", false);
 
 const main = await import("../scripts/main.mjs");
@@ -308,6 +308,10 @@ test("Night World rolled on the player's client: held via the Handler, number ne
   assert.equal(a.system.sanity.value, 50);
   const seen = chat().filter((m) => !m.whisper?.length || m.whisper.includes("p1"));
   assert.ok(seen.every((m) => !/held/i.test(m.content)));
+  const held = chat().find((m) => /SAN loss held/.test(m.content));
+  assert.ok(held && gmOnly(held));
+  assert.equal(held.author.id, "gm", "posted by the Handler's client, so the player (as sender) doesn't see it");
+  assert.ok(chat().filter(gmOnly).every((m) => m.author.id === "gm"), "no Handler-only card is ever sent from the player's client");
 });
 
 test("Night World: players don't see the loss in play; the global setting does the same for every SAN test", async () => {
