@@ -10,7 +10,9 @@ Page references are to the *Agent's Handbook* (2024 printing).
 
 ## Install
 
-1. Copy the `dg-ops` folder (or unzip `dg-ops.zip`) into `Data/modules/`.
+1. In Foundry: **Add-on Modules → Install Module**, paste this into *Manifest URL* and click Install:
+   `https://github.com/TheWarBoys2/dg-ops/releases/latest/download/module.json`
+   Foundry will then offer updates whenever a new release is published. (Or download `dg-ops.zip` from the [Releases page](https://github.com/TheWarBoys2/dg-ops/releases) and unzip it into `Data/modules/dg-ops/`.)
 2. Enable **Delta Green: Ops Automation** in your world.
 3. As Handler, follow the setup guide that opens. You can run it again from Ops settings.
 
@@ -290,6 +292,8 @@ npm run lint
 npm run build:packs  # macro compendiums from packs/_source (the IL macros are defined in tools/build-packs.mjs)
 npm run package      # builds the packs, then dg-ops.zip (no tests, no sources, no node_modules)
 ```
+
+**Releasing:** bump `version` in `module.json` (and `package.json`), update the `download` URL in `module.json` to the new tag, then push a tag such as `v1.5.1`. `.github/workflows/release.yml` runs the tests, builds the zip and publishes a GitHub release with `dg-ops.zip` and `module.json`.
 
 `test/rules.test.mjs` covers the pure rules. `test/scenarios.mjs` runs the module's real code against `test/mock-foundry.mjs`, with scripted dice and a socket that hands messages between the Handler and a player in one process. Both started with the Impossible Landscapes work in 1.5.0. The older suites (21 rules tests and 56 scenarios) weren't in this repository, so they need adding back alongside these. `packs/_source` was recovered from the compiled 1.4.0 packs, and a round trip through the CLI matches it.
 

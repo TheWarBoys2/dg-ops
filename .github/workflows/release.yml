@@ -1,0 +1,27 @@
+# Push a tag like v1.5.0 and this publishes a GitHub release with dg-ops.zip and module.json,
+# so Foundry can install or update the module from the manifest URL in module.json.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+      - name: Check the tag matches module.json
+        run: test "v$(node -p "require('./module.json').version")" = "${GITHUB_REF_NAME}"
+      - run: npm run package
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dg-ops.zip
+            module.json
+          generate_release_notes: true

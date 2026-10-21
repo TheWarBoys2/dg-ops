@@ -33,9 +33,9 @@
     "styles/dg-ops.css"
   ],
   "socket": true,
-  "url": "",
-  "manifest": "",
-  "download": "",
+  "url": "https://github.com/TheWarBoys2/dg-ops",
+  "manifest": "https://github.com/TheWarBoys2/dg-ops/releases/latest/download/module.json",
+  "download": "https://github.com/TheWarBoys2/dg-ops/releases/download/v1.5.0/dg-ops.zip",
   "license": "LICENSE",
   "packs": [
     {
