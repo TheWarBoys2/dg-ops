@@ -17,7 +17,7 @@ import { DISORDERS, disordersForCause, PERMANENT_INSANITY } from "../rules/disor
 import { disorderIdFor } from "./readiness.mjs";
 import { snapshot } from "../core/snapshot.mjs";
 import { teamOnScene } from "../core/team.mjs";
-import { runSanPreChecks, runSanResults } from "../core/extensions.mjs";
+import { runSanPreChecks, runSanResults, sanDialogHtml, sanDialogParams } from "../core/extensions.mjs";
 
 const CAT_TIP = {
   violence: "Violence: three losses in a row without insanity adapts the Agent, at a cost to CHA and Bonds (p.73).",
@@ -86,7 +86,7 @@ export async function sanTest({
     return null;
   }
   const params = { successLoss, failureLoss, category, victims, perVictim, source, fixedLoss, modifier, manual, tags, maxOnFail };
-  const pre = fixedLoss == null ? await runSanPreChecks({ actor, params }) : { skip: null, maxOnFail: false, notes: [] };
+  const pre = fixedLoss == null ? await runSanPreChecks({ actor, params }) : { skip: null, maxOnFail: false, defer: null, notes: [] };
   if (pre.skip) {
     await postCard({ actor, title: `No SAN test${source ? `: ${esc(source)}` : ""}`, body: `<p>${esc(pre.skip)}</p>`, whisper: gmWhisper(), kind: "san" });
     const sanNow = Number(actor.system.sanity?.value) || 0;
@@ -137,6 +137,22 @@ export async function sanTest({
   const sanBefore = Number(sys.sanity.value) || 0;
   const pow = statValue(actor, "pow");
   let loss = rawLoss;
+
+  // A campaign rule holds the loss back (nothing changes on the sheet); its hook keeps the number.
+  if (pre.defer) {
+    const held = { outcome: o, rawLoss, loss: 0, sanAfter: sanBefore, tempInsanity: false, breakingPointHit: false, permanentInsanity: false, deferred: true };
+    await postCard({
+      actor,
+      title: `SAN loss held${source ? `: ${esc(source)}` : ""}`,
+      subtitle: CAT_LABEL[category] ?? "",
+      body: list([o && !o.auto ? `SAN test: ${outcomeBadge(o)} (${o.total})` : "", `Loss: <b>${rawLoss}</b>, not applied yet.`, esc(pre.defer), ...notes.map(esc)]),
+      rolls,
+      whisper: gmWhisper(),
+      kind: "san",
+    });
+    await runSanResults({ actor, params, result: held });
+    return held;
+  }
 
   // Projection onto a Bond
   if (loss > 0 && isAgent(actor) && setting("projectionPrompt") && bonds(actor).length && (sys.wp?.value ?? 0) > 0) {
@@ -622,7 +638,8 @@ export async function sanDialog(actors, defaults = {}) {
       ${field("Category", `<select name="cat">${options(CAT_LABEL, defaults.category ?? "unnatural")}</select>`)}
       ${field("Victims", `<input type="number" name="victims" value="1" min="1" style="width:5em"> <label><input type="checkbox" name="perVictim"> +1 per extra victim</label>`)}
       ${field("Source", `<input type="text" name="source" value="${esc(defaults.source ?? "")}">`)}
-      ${field("Modifier", `<input type="number" name="mod" value="0" step="10" style="width:5em">`)}`,
+      ${field("Modifier", `<input type="number" name="mod" value="0" step="10" style="width:5em">`)}
+      ${sanDialogHtml()}`,
     buttons: [{ action: "ok", label: "Post SAN test", default: true }],
   });
   if (!r) return;
@@ -635,7 +652,7 @@ export async function sanDialog(actors, defaults = {}) {
     perVictim = !!p.perVictim;
     source ||= p.label;
   }
-  return sanGroupCard(actors, { successLoss: s, failureLoss: f, category: cat, victims: r.data.victims ?? 1, perVictim, source, modifier: r.data.mod ?? 0 });
+  return sanGroupCard(actors, { successLoss: s, failureLoss: f, category: cat, victims: r.data.victims ?? 1, perVictim, source, modifier: r.data.mod ?? 0, ...sanDialogParams(r.data) });
 }
 
 /** One card, a Roll button per Agent. Numbers go to the Handler; everyone sees pass or fail. */
@@ -657,6 +674,7 @@ registerContinuation("sanRow", async ({ params }, ctx) => {
   const r = await sanTest({ actor: ctx.actor, ...params });
   if (!r) return { label: "No test" };
   if (r.skipped) return { pass: true, outcome: null, label: "No test needed", gm: "skipped by a campaign rule" };
+  if (r.deferred) return { pass: !!r.outcome?.success, outcome: r.outcome?.auto ? null : r.outcome, label: r.outcome?.success ? "Passed" : "Failed", gm: esc(`rolled ${r.outcome?.total}, ${r.rawLoss} held`) };
   const o = r.outcome;
   const roll = o?.auto ? "adapted" : `rolled ${o?.total}`;
   return {
@@ -686,7 +704,7 @@ export async function runForActor(actor, params) {
 registerHandler("sanTestRemote", async (uuid, params) => {
   const actor = await fromUuid(uuid);
   const r = await sanTest({ actor, ...params });
-  return r ? { loss: r.loss } : null;
+  return r ? { loss: r.loss, rawLoss: r.rawLoss, deferred: !!r.deferred } : null;
 });
 
 registerAction("sanPreset", async ({ args }) => {

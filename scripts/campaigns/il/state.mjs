@@ -12,6 +12,7 @@
  *  vanished          opened their bottle and hit 0 SAN
  *  yellowSign        { failed, shared }
  *  gift, insight     band index 0–9; giftsRevealed
+ *  nightWorld        { inside, held, log }: SAN loss held until they leave the Night World
  *  metalPorcelain    (NPCs) odd damage rolls inflict only 1
  *  log               last few changes, for the Handler
  */

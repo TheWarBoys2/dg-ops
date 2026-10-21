@@ -2,8 +2,11 @@
  * Extension points for optional rule sets (campaign modules). The core code calls these and stays
  * campaign-agnostic: with nothing registered, every call is a no-op.
  *
- *  - SAN pre-checks:  fn({ actor, params }) → { skip?: string, maxOnFail?: boolean, notes?: string[] } | null
+ *  - SAN pre-checks:  fn({ actor, params }) → { skip?: string, maxOnFail?: boolean, defer?: string, notes?: string[] } | null
  *                     Runs before a SAN test is rolled. `skip` cancels the test (the string says why).
+ *                     `defer` rolls the test and works out the loss but doesn't apply it: the result
+ *                     hooks get { deferred: true, rawLoss } and decide what to do with it.
+ *  - SAN dialog fields: { html: () → string, read(data) → { tags?: string[] } } added to the SAN test dialog.
  *  - SAN results:     fn({ actor, params, result }) after the loss has landed and the card is posted.
  *  - Damage filters:  fn({ actor, kind: "damage" | "lethality", rolled, res }) → res | null
  *                     Runs on an attack's resolved damage, before it's applied. Return a changed copy.
@@ -15,6 +18,22 @@ const sanPreChecks = [];
 const sanResults = [];
 const damageFilters = [];
 const studySources = [];
+const sanDialogFields = [];
+
+export function addSanDialogField(f) {
+  sanDialogFields.push(f);
+}
+
+export function sanDialogHtml() {
+  return sanDialogFields.map((f) => f.html?.() ?? "").join("");
+}
+
+/** Extra SAN params from the dialog's form data (tags are merged). */
+export function sanDialogParams(data) {
+  const tags = [];
+  for (const f of sanDialogFields) tags.push(...(f.read?.(data)?.tags ?? []));
+  return tags.length ? { tags } : {};
+}
 
 export function addSanPreCheck(fn) {
   sanPreChecks.push(fn);
@@ -37,13 +56,14 @@ export function getStudySources() {
 }
 
 export async function runSanPreChecks(ctx) {
-  const out = { skip: null, maxOnFail: false, notes: [] };
+  const out = { skip: null, maxOnFail: false, defer: null, notes: [] };
   for (const fn of sanPreChecks) {
     try {
       const r = await fn(ctx);
       if (!r) continue;
       if (r.skip && !out.skip) out.skip = r.skip;
       if (r.maxOnFail) out.maxOnFail = true;
+      if (r.defer && !out.defer) out.defer = r.defer;
       if (r.notes?.length) out.notes.push(...r.notes);
     } catch (e) {
       warn("SAN pre-check failed", e);
@@ -77,5 +97,5 @@ export function filterDamage({ actor, kind, rolled, res }) {
 
 /** Number of registered extensions of every kind (for tests and the setup guide). */
 export function extensionCount() {
-  return sanPreChecks.length + sanResults.length + damageFilters.length + studySources.length;
+  return sanPreChecks.length + sanResults.length + damageFilters.length + studySources.length + sanDialogFields.length;
 }

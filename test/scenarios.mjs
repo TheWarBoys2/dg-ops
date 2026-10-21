@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { dice, dialogs, makeAgent, chat, preset, hooks, settingDefs, asPlayer, asGM } from "./mock-foundry.mjs";
 
-preset("welcomed", "1.5.0");
+preset("welcomed", "1.6.0");
 preset("backups", false);
 
 const main = await import("../scripts/main.mjs");
@@ -14,6 +14,8 @@ const { sanTest } = await import("../scripts/features/sanity.mjs");
 const { resolveNormalDamage, resolveLethality } = await import("../scripts/rules/combat.mjs");
 const { processDue, events } = await import("../scripts/core/scheduler.mjs");
 const IL = await import("../scripts/campaigns/il/index.mjs");
+const { sanDialogHtml, sanDialogParams } = await import("../scripts/core/extensions.mjs");
+const clock = await import("../scripts/features/clock.mjs");
 void main;
 
 const tests = [];
@@ -23,6 +25,7 @@ const gmOnly = (m) => Array.isArray(m.whisper) && m.whisper.length === 1 && m.wh
 const fresh = () => {
   chat().length = 0;
   dice.queue.length = 0;
+  dialogs.length = 0;
   ui.notifications.warns.length = 0;
   asGM();
 };
@@ -40,6 +43,7 @@ test("IL off: nothing registered, no API, no extensions", () => {
   assert.equal(settingDefs.has("dg-ops.ilOperation"), false);
   assert.equal(game.modules.get("dg-ops").api.il, undefined);
   assert.equal(extensionCount(), 0);
+  assert.equal(sanDialogHtml(), "", "no Night World tickbox");
 });
 
 test("IL off: SAN tests and damage ignore IL flags", async () => {
@@ -237,6 +241,86 @@ test("Yellow Sign rolled on the player's client never shows them Corruption", as
   assert.ok(seenByPlayer.every((m) => !/Corruption/.test(m.content)), "no card the player can see mentions Corruption");
 });
 
+test("Night World tickbox: the loss is rolled but held, and only the Handler sees the number", async () => {
+  fresh();
+  assert.match(sanDialogHtml(), /Night World/);
+  const tags = sanDialogParams({ ilNightWorld: true }).tags;
+  assert.deepEqual(tags, ["il:nightWorld"]);
+  assert.deepEqual(sanDialogParams({ ilNightWorld: false }), {});
+  const a = makeAgent({ name: "Dreamer", san: 50, bp: 10, owners: ["p1"] });
+  dice.push(90, 5); // fail, 1D6 → 5
+  const r = await sanTest({ actor: a, successLoss: "0", failureLoss: "1D6", category: "unnatural", source: "The Night Floors", tags });
+  assert.equal(r.deferred, true);
+  assert.equal(r.rawLoss, 5);
+  assert.equal(a.system.sanity.value, 50, "nothing comes off the sheet");
+  assert.equal(il().nightWorld.of(a).held, 5);
+  assert.ok(chat().filter((m) => /held/i.test(m.content)).every(gmOnly));
+  dice.push(10, 1); // pass, 1D… success loss "1"
+  await sanTest({ actor: a, successLoss: "1", failureLoss: "1D6", category: "violence", source: "Again", tags });
+  assert.equal(il().nightWorld.of(a).held, 6);
+  assert.equal(a.system.sanity.value, 50);
+});
+
+test("Night World: correct the tally by hand, then apply it as one loss when they leave", async () => {
+  fresh();
+  const a = makeAgent({ name: "Walker", san: 50, bp: 30, owners: ["p1"] });
+  await il().nightWorld.setInside(a, true);
+  dice.push(90, 4);
+  await sanTest({ actor: a, successLoss: "0", failureLoss: "1D6", category: "unnatural", source: "No tickbox, but inside" });
+  assert.equal(il().nightWorld.of(a).held, 4, "inside: every SAN test is held");
+  await il().nightWorld.hold(a, 2, { source: "Handler's correction" });
+  await il().nightWorld.hold(a, -1, { source: "Handler's correction" });
+  await il().nightWorld.hold(a, -50);
+  assert.equal(il().nightWorld.of(a).held, 0, "never below 0");
+  await il().nightWorld.hold(a, 6);
+  await il().nightWorld.apply(a);
+  assert.equal(a.system.sanity.value, 44);
+  assert.deepEqual([il().nightWorld.of(a).held, il().nightWorld.of(a).inside], [0, false]);
+  dice.push(90, 3);
+  await sanTest({ actor: a, successLoss: "0", failureLoss: "1D6", category: "unnatural", source: "Back home" });
+  assert.equal(a.system.sanity.value, 41, "out again: losses land as normal");
+});
+
+test("Night World: the dialog saves corrections and applies", async () => {
+  fresh();
+  const a = makeAgent({ name: "Dlg", san: 50, bp: 10, owners: ["p1"] });
+  await il().nightWorld.hold(a, 3);
+  dialogs.push({ action: "save", data: { [`h-${a.id}`]: 7, [`c-${a.id}`]: "unnatural" } });
+  await il().nightWorld.dialog([a]);
+  assert.equal(il().nightWorld.of(a).held, 7);
+  dialogs.push({ action: "apply", data: { [`h-${a.id}`]: 7, [`c-${a.id}`]: "unnatural" } });
+  dialogs.push(null, null, null); // anything the 7-point loss asks (projection, disorder) is declined
+  await il().nightWorld.dialog([a]);
+  assert.equal(a.system.sanity.value, 43);
+  assert.equal(il().nightWorld.of(a).held, 0);
+});
+
+test("Night World rolled on the player's client: held via the Handler, number never shown", async () => {
+  fresh();
+  const a = makeAgent({ name: "Mine2", san: 50, bp: 10, owners: ["p1"] });
+  asPlayer();
+  dice.push(90, 3);
+  const r = await sanTest({ actor: a, successLoss: "0", failureLoss: "1D6", category: "unnatural", source: "x", tags: ["il:nightWorld"] });
+  await new Promise((res) => setTimeout(res, 20));
+  asGM();
+  assert.equal(r.deferred, true);
+  assert.equal(il().nightWorld.of(a).held, 3);
+  assert.equal(a.system.sanity.value, 50);
+  const seen = chat().filter((m) => !m.whisper?.length || m.whisper.includes("p1"));
+  assert.ok(seen.every((m) => !/held/i.test(m.content)));
+});
+
+test("Night World console strip: Handler only, shown while inside or holding", async () => {
+  const { consoleStrip } = await import("../scripts/campaigns/il/nightworld.mjs");
+  const a = makeAgent({ name: "Strip", owners: ["p1"] });
+  assert.equal(consoleStrip(a), "");
+  await il().nightWorld.hold(a, 2);
+  assert.match(consoleStrip(a), /Night World/);
+  asPlayer();
+  assert.equal(consoleStrip(a), "");
+  asGM();
+});
+
 test("Console Corruption strip: Handler only", async () => {
   const { consoleCard } = await import("../scripts/campaigns/il/corruption.mjs");
   const a = makeAgent({ name: "Card", owners: ["p1"], flags: { "dg-ops": { il: { corruption: 3 } } } });
@@ -246,6 +330,67 @@ test("Console Corruption strip: Handler only", async () => {
   asGM();
 });
 
+/* ---------------- Clock (core) ---------------- */
+
+test("Clock: relabel to a date without moving game time", async () => {
+  fresh();
+  const before = game.time.worldTime;
+  const n = events().length;
+  await clock.setClock({ to: clock.parseShown({ date: "2026-03-14", time: "23:00" }, "date"), mode: "date", move: false });
+  assert.equal(game.time.worldTime, before);
+  assert.equal(events().length, n);
+  assert.equal(clock.clockText(), "Sat 14 Mar 2026, 23:00");
+  assert.equal(clock.clockText(before + 2 * 3600), "Sun 15 Mar 2026, 01:00");
+});
+
+test("Clock: moving it runs what's due in between", async () => {
+  fresh();
+  const t0 = game.time.worldTime;
+  await clock.addReminder({ title: "Cult moves the body", notes: "Warehouse 9", delay: 3600 });
+  await clock.setClock({ to: clock.parseShown({ date: "2026-03-15", time: "01:00" }, "date"), mode: "date", move: true });
+  assert.equal(game.time.worldTime, t0 + 7200);
+  await processDue(game.time.worldTime);
+  const card = chat().find((m) => /Cult moves the body/.test(m.content));
+  assert.ok(card && gmOnly(card), "the reminder is whispered to the Handler");
+  assert.match(card.content, /Warehouse 9/);
+  assert.equal(events().some((e) => e.type === "manual"), false, "a one-off is gone once it fires");
+});
+
+test("Clock: Day numbers, and the dialogs", async () => {
+  fresh();
+  assert.equal(clock.formatShown(0, "day"), "Day 1, 00:00");
+  assert.equal(clock.formatShown(86400 * 2 + 3600 * 9 + 60 * 5, "day"), "Day 3, 09:05");
+  assert.equal(clock.parseShown({ day: 3, time: "09:05" }, "day"), 86400 * 2 + 3600 * 9 + 300);
+  assert.equal(clock.parseShown({ date: "" }, "date"), null);
+  const t0 = game.time.worldTime;
+  dialogs.push({ action: "ok", data: { mode: "day", date: "", day: 2, time: "08:00", how: "move" } });
+  await clock.setClockDialog();
+  assert.equal(game.time.worldTime, t0, "switching to Day numbers only relabels");
+  assert.equal(clock.clockText(), "Day 2, 08:00");
+  dialogs.push({ action: "ok", data: { mode: "day", date: "", day: 2, time: "10:30", how: "move" } });
+  await clock.setClockDialog();
+  assert.equal(game.time.worldTime, t0 + 9000);
+  assert.equal(clock.clockText(), "Day 2, 10:30");
+});
+
+test("Schedule by hand: at a time, repeating, posted to everyone", async () => {
+  fresh();
+  const a = makeAgent({ name: "Tagged", owners: ["p1"] });
+  dialogs.push({ action: "ok", data: { title: "Phone call", notes: "", when: "at", day: 2, time: "12:00", rn: 1, runit: 86400, show: "all", actor: a.uuid } });
+  await clock.reminderDialog();
+  const evt = events().find((e) => e.type === "manual");
+  assert.equal(clock.clockText(evt.due), "Day 2, 12:00");
+  assert.equal(evt.actorUuid, a.uuid);
+  await processDue(evt.due);
+  const card = chat().find((m) => /Phone call/.test(m.content));
+  assert.ok(card && !card.whisper?.length, "posted for everyone");
+  const again = events().find((e) => e.type === "manual");
+  assert.equal(again.due, evt.due + 86400, "repeats daily");
+  dialogs.push({ action: "ok", data: { title: "Too late", when: "at", day: 1, time: "00:00", rn: 0, runit: 86400, show: "gm" } });
+  await clock.reminderDialog();
+  assert.ok(ui.notifications.warns.some((w) => /already passed/.test(w)));
+});
+
 let failed = 0;
 for (const [name, fn] of tests) {
   try {
@@ -253,7 +398,7 @@ for (const [name, fn] of tests) {
     console.log(`  ok  ${name}`);
   } catch (e) {
     failed++;
-    console.log(`  FAIL ${name}\n       ${e.stack?.split("\n").slice(0, 3).join("\n       ")}`);
+    console.log(`  FAIL ${name}\n       ${e.stack?.split("\n").slice(0, 8).join("\n       ")}`);
   }
 }
 console.log(`scenarios: ${tests.length - failed}/${tests.length} passed`);

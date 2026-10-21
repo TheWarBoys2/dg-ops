@@ -535,3 +535,5 @@ body.dgops-il-on .dgops-il__tags { display: inline-flex; flex-wrap: wrap; gap: 3
 body.dgops-il-on .dgops-il__tags .flag { font-size: 10px; padding: 0 4px; border: 1px solid var(--dg-ink-soft); border-radius: 2px; color: var(--dg-ink-soft); }
 body.dgops-il-on .dgops-il__tags .flag.warn { border-color: var(--dg-warn); color: var(--dg-warn); }
 body.dgops-il-on .dgops-il__tags .flag.bad { border-color: var(--dg-bad); color: #fff; background: var(--dg-bad); }
+body.dgops-il-on .dgops-il--night { border-color: #5b6c9a; background: rgba(70, 90, 150, 0.08); }
+body.dgops-il-on .dgops-il--night .dgops-il__label { color: #4a5a86; }

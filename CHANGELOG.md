@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.6.0 — 2026-10-21
+
+- **Set date & time** (Console top bar and *Clock & queue*, plus a macro in *Time*). You can set the game clock to a calendar date or to a Day number and time. *Move the clock* advances game time, so everything due in between happens (a jump of more than 60 days asks first). *Just relabel it* changes what the clock reads without moving anything on the schedule. The setting is the world setting `clock` (`{ mode, offset }`). Until it's set, the Console shows Foundry's calendar as before.
+- **Add to the schedule** (Console *Clock & queue*, plus a macro in *Time*). These are your own reminders on the game clock: in N minutes, hours, days or weeks, or at a date and time; once or repeating; whispered to you or posted to everyone; optionally about one Agent. The schedule list shows each item's date and notes.
+- **Impossible Landscapes: Night World (house rule).**
+  - An *In the Night World* tickbox on the SAN test dialog, or mark Agents as inside. The test is rolled, but the loss is held in `flags.dg-ops.il.nightWorld` instead of coming off the sheet.
+  - The Console roster shows the tally to the Handler with −/+ corrections and *Apply*, which takes it as one loss and clears it.
+  - There's a *Night World* tile and macro for several Agents at once.
+  - The Yellow Sign still adds Corruption when the held loss is above 0. Opening a Soul Bottle is never held.
+- **Core:**
+  - SAN pre-checks can return `defer`. The test is rolled but not applied, and the result hooks get `{ deferred: true, rawLoss }`.
+  - Extensions can add fields to the SAN test dialog (`addSanDialogField`).
+  - `api.clockText`, `setClock`, `setClockDialog`, `addReminder` and `reminderDialog` are new.
+- 9 new scenarios (26 in all). There are 46 Handler macros.
+
 ## 1.5.0 — 2026-10-21
 
 Impossible Landscapes campaign features, behind a switch.
