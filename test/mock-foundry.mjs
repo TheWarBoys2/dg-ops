@@ -277,7 +277,11 @@ g.ChatMessage = {
   getSpeaker: ({ actor } = {}) => ({ alias: actor?.name ?? "Handler" }),
   getWhisperRecipients: (who) => (who === "GM" ? [gmUser] : []),
   async create(data) {
-    const m = { id: randomID(), ...data, author: game.user, getFlag: (s, k) => getProperty(data.flags?.[s] ?? {}, k) };
+    const m = { id: randomID(), ...data, author: game.user, getFlag: (s, k) => getProperty(m.flags?.[s] ?? {}, k) };
+    m.update = async (patch) => {
+      for (const [k, v] of Object.entries(patch)) setProperty(m, k, v);
+      return m;
+    };
     messages.push(m);
     return m;
   },

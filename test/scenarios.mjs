@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { dice, dialogs, makeAgent, chat, preset, hooks, settingDefs, asPlayer, asGM } from "./mock-foundry.mjs";
 
-preset("welcomed", "1.6.0");
+preset("welcomed", "1.6.1");
 preset("backups", false);
 
 const main = await import("../scripts/main.mjs");
@@ -308,6 +308,35 @@ test("Night World rolled on the player's client: held via the Handler, number ne
   assert.equal(a.system.sanity.value, 50);
   const seen = chat().filter((m) => !m.whisper?.length || m.whisper.includes("p1"));
   assert.ok(seen.every((m) => !/held/i.test(m.content)));
+});
+
+test("Night World: players don't see the loss in play; the global setting does the same for every SAN test", async () => {
+  fresh();
+  const { sanGroupCard, lossHidden } = await import("../scripts/features/sanity.mjs");
+  const a = makeAgent({ name: "Seer", san: 50, bp: 10, owners: ["p1"] });
+  const night = { successLoss: "1", failureLoss: "1D6", category: "unnatural", source: "Night Floors", tags: ["il:nightWorld"] };
+  const day = { ...night, source: "Daylight", tags: [] };
+  assert.equal(lossHidden(a, night), true);
+  assert.equal(lossHidden(a, day), false);
+  const card = (src) => chat().filter((m) => m.content.includes(`SAN test: ${src}`)).at(-1);
+  await sanGroupCard([a], night);
+  assert.doesNotMatch(card("Night Floors").content, /1D6/, "Night World card hides what's at stake");
+  await sanGroupCard([a], day);
+  assert.match(card("Daylight").content, /1D6/);
+  await game.settings.set("dg-ops", "ilNightWorldHide", false);
+  assert.equal(lossHidden(a, night), false, "the Impossible Landscapes setting switches it off");
+  await game.settings.set("dg-ops", "ilNightWorldHide", true);
+  await game.settings.set("dg-ops", "hideSanLoss", true);
+  assert.equal(lossHidden(a, day), true, "the general setting hides it on every SAN test");
+  chat().length = 0;
+  await sanGroupCard([a], day);
+  assert.doesNotMatch(card("Daylight").content, /1D6/);
+  const b = makeAgent({ name: "Seer2", san: 50, bp: 10, owners: ["p1"] });
+  dice.queue.length = 0;
+  dice.push(90, 4);
+  const r = await sanTest({ actor: b, ...day });
+  assert.equal(r.loss, 4, "the loss still lands as normal");
+  await game.settings.set("dg-ops", "hideSanLoss", false);
 });
 
 test("Night World console strip: Handler only, shown while inside or holding", async () => {

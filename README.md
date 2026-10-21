@@ -4,7 +4,7 @@ Rules automation for the **Delta Green** system (`deltagreen` **2.0.1**) on **Fo
 
 Page references are to the *Agent's Handbook* (2024 printing).
 
-> **Status:** v1.6.0. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
+> **Status:** v1.6.1. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
 
 ---
 
@@ -206,6 +206,7 @@ Switch on **Impossible Landscapes campaign features** in Foundry's own *Configur
 - **Night World: hold the SAN loss (house rule).** The SAN test dialog gets an *In the Night World* tickbox. When it's ticked, the test is rolled as usual (players still see pass or fail), but nothing comes off the sheet. The loss is added to that Agent's Night World tally, and only the Handler sees the number. You can also mark Agents as *in the Night World* (Console → Night World), and then every SAN test they take is held, with or without the tickbox.
   - The Console roster shows the tally (Handler only) with −/+ to correct it and **Apply**. Apply takes the whole tally as **one** SAN loss, so 5+ can mean temporary insanity and the Breaking Point counts. It then clears the tally and marks them as out.
   - The *Night World* tile and macro open a dialog for several Agents at once: see the recent entries, change the numbers, pick the category it's applied as, and apply.
+  - What players see: only pass or fail. The SAN card doesn't show the loss in play, the loss dice are rolled for the Handler only, and the held number goes to the Handler. This is the setting *Impossible Landscapes: Night World SAN tests show players only pass or fail* in *Configure Settings*, which is on by default.
   - Fixed losses (a tome's flat SAN cost, for instance) and opening a Soul Bottle aren't held. Held losses don't count toward violence or helplessness adaptation, because they're applied as one lump.
 
 Not included: clown heights, fire effects, the Gold Bug, the Coquelicots Mask, handouts and statblocks. Melonia, the King's aura, Bond symptoms, fugitive heat, NPC archetypes and a campaign visual theme may come later.
@@ -228,6 +229,8 @@ Skill improvement rolls, the exhaustion / stimulant / rest buttons (Rest is wrap
 ---
 
 ## Settings
+
+**Hide the possible SAN loss from players** (Ops settings → Sanity & Bonds, off by default) does the same for every SAN test. Cards don't show what's at stake (for example 1/1D6), and the loss dice are rolled for the Handler only. Players still see what they actually lost once it lands.
 
 Every automation can be switched off individually in the Ops settings window (Sanity & Bonds · Tests · Combat · Medical & hazards · Downtime · Interface). Defaults follow the book. The Interface options cover the Ops button, letting players open their own Kit, rule tips on cards, compact cards and Undo. The judgement calls are configurable:
 
