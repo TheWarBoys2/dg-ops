@@ -293,7 +293,7 @@ npm run build:packs  # macro compendiums from packs/_source (the IL macros are d
 npm run package      # builds the packs, then dg-ops.zip (no tests, no sources, no node_modules)
 ```
 
-**Releasing:** bump `version` in `module.json` (and `package.json`), update the `download` URL in `module.json` to the new tag, then push a tag such as `v1.5.1`. `.github/workflows/release.yml` runs the tests, builds the zip and publishes a GitHub release with `dg-ops.zip` and `module.json`.
+**Releasing:** bump `version` in `module.json` (and `package.json`), update the `download` URL in `module.json` to the new tag, and merge to `main`. `.github/workflows/release.yml` sees a version with no release yet, runs the tests, builds the zip and publishes the release (tag included) with `dg-ops.zip` and `module.json`. It can also be run by hand from the Actions tab.
 
 `test/rules.test.mjs` covers the pure rules. `test/scenarios.mjs` runs the module's real code against `test/mock-foundry.mjs`, with scripted dice and a socket that hands messages between the Handler and a player in one process. Both started with the Impossible Landscapes work in 1.5.0. The older suites (21 rules tests and 56 scenarios) weren't in this repository, so they need adding back alongside these. `packs/_source` was recovered from the compiled 1.4.0 packs, and a round trip through the CLI matches it.
 
