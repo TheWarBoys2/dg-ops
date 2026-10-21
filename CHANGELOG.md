@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.2 — 2026-10-21
+
+- **Fix: players could see Handler-only cards their own rolls set off**, for example *SAN loss held* in the Night World. Foundry always shows a whisper to the user who sent it. Any card whispered only to the Handler is now created by the Handler's client, even when a player's click triggered it.
+
 ## 1.6.1 — 2026-10-21
 
 - **New setting: Hide the possible SAN loss from players** (Sanity & Bonds, off by default). SAN cards stop showing the loss in play (e.g. 1/1D6), and the loss dice roll for the Handler only. The actual loss still shows once it lands.

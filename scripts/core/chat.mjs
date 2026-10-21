@@ -103,8 +103,16 @@ export async function postCard({ actor = null, title, body, rolls = [], whisper 
   };
   if (whisper?.length) data.whisper = whisper;
   if (blind) data.blind = true;
+  // Foundry always shows a whisper to whoever posted it, so a Handler-only card set off on a
+  // player's client (their own SAN roll, say) is posted by the Handler's client instead.
+  if (!game.user.isGM && whisper?.length && !whisper.includes(game.user.id) && whisper.every((id) => game.users.get(id)?.isGM)) {
+    const id = await gm("gmPostCard", data);
+    return (id && game.messages?.get?.(id)) || { id };
+  }
   return ChatMessage.create(data);
 }
+
+registerHandler("gmPostCard", async (data) => (await ChatMessage.create(data))?.id ?? null);
 
 const DG_ICON = "systems/deltagreen/assets/img/green_delta_icon.webp";
 

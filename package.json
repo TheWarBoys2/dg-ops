@@ -1,6 +1,6 @@
 {
   "name": "dg-ops",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "private": true,
   "type": "module",
   "description": "Delta Green: Ops Automation (Foundry VTT module) — development tooling.",

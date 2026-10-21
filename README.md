@@ -4,7 +4,7 @@ Rules automation for the **Delta Green** system (`deltagreen` **2.0.1**) on **Fo
 
 Page references are to the *Agent's Handbook* (2024 printing).
 
-> **Status:** v1.6.1. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
+> **Status:** v1.6.2. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
 
 ---
 
