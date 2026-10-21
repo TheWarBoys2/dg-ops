@@ -1,0 +1,78 @@
+{
+  "id": "dg-ops",
+  "title": "Delta Green: Ops Automation",
+  "description": "Rules automation for the Delta Green system: the full SAN pipeline (projection onto Bonds, temporary insanity, Breaking Point, disorders, adaptation, repression), defence prompts, Lethality and protection, kill radius and suppression, injuries and healing, hazards, pursuits, Home scenes, money and requisition, interrogation, and a Handler Console.",
+  "version": "1.4.0",
+  "authors": [
+    {
+      "name": "Jay"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14",
+    "maximum": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "deltagreen",
+        "type": "system",
+        "compatibility": {
+          "minimum": "2.0.1",
+          "verified": "2.0.1",
+          "maximum": "2.0.1"
+        }
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/main.mjs"
+  ],
+  "styles": [
+    "styles/dg-ops.css"
+  ],
+  "socket": true,
+  "url": "",
+  "manifest": "",
+  "download": "",
+  "license": "LICENSE",
+  "packs": [
+    {
+      "name": "handler-macros",
+      "label": "Ops: Handler macros",
+      "system": "deltagreen",
+      "path": "packs/handler-macros",
+      "type": "Macro",
+      "ownership": {
+        "PLAYER": "NONE",
+        "TRUSTED": "NONE",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "name": "agent-macros",
+      "label": "Ops: Agent macros",
+      "system": "deltagreen",
+      "path": "packs/agent-macros",
+      "type": "Macro",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    }
+  ],
+  "packFolders": [
+    {
+      "name": "Delta Green Ops",
+      "sorting": "m",
+      "color": "#1a1a1a",
+      "packs": [
+        "handler-macros",
+        "agent-macros"
+      ]
+    }
+  ]
+}
