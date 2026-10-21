@@ -56,7 +56,12 @@ if (!ops) return ui.notifications.warn("Delta Green: Ops Automation isn't active
 if (!game.user.isGM) return ui.notifications.warn("That one is for the Handler.");
 `;
 
-/** Added to the Time folder: [name, icon, description, body, sort] */
+/** Added to core folders: [folder prefix, name, icon, description, body, sort] */
+const CORE_MACROS = [
+  ["Sanity_", "Edit SAN log", "icons/svg/book.svg", "Change, rename or delete rows of the selected Agent's SAN loss log, and put their SAN right to match.", `const sel = ops.selected();
+if (sel.length !== 1) return ui.notifications.warn("Select one Agent's token.");
+await ops.editSanLog(sel[0]);`, 3100000],
+];
 const TIME_MACROS = [
   ["Set date and time", "icons/svg/clockwork.svg", "Set the game clock to a date (or Day number) and time: move it, or just relabel it.", `await ops.setClockDialog();`, 2900000],
   ["Add to the schedule", "icons/svg/sun.svg", "Schedule your own reminder on the game clock, once or repeating.", `await ops.reminderDialog();`, 3000000],
@@ -64,9 +69,9 @@ const TIME_MACROS = [
 
 function writeTime() {
   const pack = join(SRC, "handler-macros");
-  const dir = join(pack, readdirSync(pack).find((d) => d.startsWith("Time_")));
-  const folderId = dir.split("_").pop();
-  for (const [name, img, description, body, sort] of TIME_MACROS) {
+  for (const [prefix, name, img, description, body, sort] of [...TIME_MACROS.map((m) => ["Time_", ...m]), ...CORE_MACROS]) {
+    const dir = join(pack, readdirSync(pack).find((d) => d.startsWith(prefix)));
+    const folderId = dir.split("_").pop();
     const mid = id(`macro:core:${name}`);
     const doc = { _id: mid, name, type: "script", img, command: `${CORE_PREAMBLE}${body}`, scope: "global", folder: folderId, sort, ownership: { default: 0 }, flags: { "dg-ops": { description } }, author: null, _key: `!macros!${mid}` };
     writeFileSync(join(dir, `${name.replace(/[^A-Za-z0-9]/g, "_")}_${mid}.json`), `${JSON.stringify(doc, null, 2)}\n`);

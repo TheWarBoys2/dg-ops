@@ -4,7 +4,7 @@ Rules automation for the **Delta Green** system (`deltagreen` **2.0.1**) on **Fo
 
 Page references are to the *Agent's Handbook* (2024 printing).
 
-> **Status:** v1.6.2. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
+> **Status:** v1.7.0. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
 
 ---
 
@@ -64,6 +64,8 @@ The module dresses itself in the Delta Green system's own materials: its stained
   - Critical success loses the minimum; a fumble loses the maximum.
   - Per-victim violence (+1 per extra victim, capped).
   - Adapted Agents succeed automatically against that kind of trauma.
+  - **Results stay on the SAN test card.** When Agents roll from a SAN test card, nobody gets a separate card for each Agent. Each row shows pass or fail to everyone. The Agent's owner also sees what it cost (for example −3 SAN, 53 → 50, and any projection). The Handler sees the roll, the loss before and after projection, which Bond took it, and anything else that happened. A separate card is posted only when there's something to click: temporary insanity, a Breaking Point, 0 SAN or an acute episode.
+  - **SAN loss log:** every loss is logged with the roll, the result, the loss before and after projection, the Bond it was projected onto, SAN before and after, and any temporary insanity or Breaking Point. The Ops Kit's Case log shows it. The Handler's **Edit the SAN log…** (or the *Edit SAN log* macro) can change numbers, rename or recategorise rows, and delete rows. It can also adjust current SAN to match: a deleted row gives its SAN back. This replaces Undo for results that went on the card.
   - All of the p.67 table is built in as presets.
 - **Projection onto a Bond.** The player is asked before the loss lands and is shown whether it would cause temporary insanity or reach the Breaking Point. It spends 1D4 WP; if WP stays ≥1, the loss is reduced and the Bond takes the same damage.
 - **Temporary insanity** (5+ in one roll):
@@ -248,6 +250,7 @@ const ops = game.modules.get("dg-ops").api;
 ops.openConsole();
 ops.sanTest({ actor, successLoss: "1", failureLoss: "1D8", category: "unnatural", source: "The thing in the walls" });
 ops.sanDialog(canvas.tokens.controlled.map(t => t.actor));          // posts a SAN card
+ops.editSanLog(actor);                    // Handler: edit or delete SAN log rows
 ops.sanGroupCard(actors, { successLoss: "0", failureLoss: "1D6", category: "unnatural", source: "The corpse" });
 ops.attackAssistant(actor, { itemId });   // the attack window
 ops.startChase({ pursuer: { actor: a, skill: "drive", speed: "normal", aid: 0 }, quarry: { actor: b, skill: "drive", speed: "fast", aid: 0 }, required: 2 });

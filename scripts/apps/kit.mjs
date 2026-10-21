@@ -12,6 +12,7 @@ import { PROTECTION, parseCapacity } from "../rules/combat.mjs";
 import { analyzeActor, analyzeItem, STATUS_LABEL, disorderIdFor, triggerText } from "../features/readiness.mjs";
 import { isDGBond } from "../core/bonds.mjs";
 import { DGOpsApp, btn } from "./base.mjs";
+import { sanLogLine } from "../features/sanity.mjs";
 
 /** Plain-language explanations for conditions shown in the kit and on status effects. */
 export const CONDITION_TEXT = {
@@ -306,11 +307,11 @@ export class OpsKit extends DGOpsApp {
     const inj = (a.getFlag(MODULE_ID, "injuries") ?? []).slice().reverse();
     const lastHome = a.getFlag(MODULE_ID, "lastHome")?.t;
     const sanRows = san.length
-      ? `<table class="dgops-table"><tr><th>When</th><th>What</th><th>Kind</th><th>SAN</th></tr>${san.map((e) => `<tr class="${lastHome != null && e.t < lastHome ? "old" : ""}"><td>${ago(e.t)}</td><td>${esc(e.source || "—")}</td><td>${esc(e.category)}</td><td>−${e.loss}</td></tr>`).join("")}</table>`
+      ? `<table class="dgops-table"><tr><th>When</th><th>What</th><th>Kind</th><th>SAN</th></tr>${san.map((e) => `<tr class="${lastHome != null && e.t < lastHome ? "old" : ""}"><td>${ago(e.t)}</td><td>${esc(e.source || "—")}${sanLogLine(e) ? `<br><small class="dgops-quiet">${esc(sanLogLine(e))}</small>` : ""}</td><td>${esc(e.category)}</td><td>−${e.loss}</td></tr>`).join("")}</table>`
       : `<p class="dgops-empty">No SAN lost yet.</p>`;
     const cash = a.getFlag(MODULE_ID, "illicitCash");
     const reviews = a.getFlag(MODULE_ID, "reviews") ?? [];
-    return `<h3>Incidents of SAN loss</h3>${sanRows}
+    return `<h3>Incidents of SAN loss</h3>${sanRows}${game.user.isGM && san.length ? `<div class="dgops-buttons">${btn("editSanLog", "Edit the SAN log…")}</div>` : ""}
       ${inj.length ? `<h3>Permanent injuries</h3><ul class="dgops-list">${inj.map((i) => `<li>${esc(i.text)}</li>`).join("")}</ul>` : ""}
       ${reviews.length ? `<h3>Awaiting official review</h3><ul class="dgops-list">${reviews.map((r) => `<li>${esc(r.item)} (${esc(r.level)})</li>`).join("")}</ul>` : ""}
       ${cash ? `<p>Illicit cash: <b>${cash}</b> Standard purchases.</p>` : ""}
@@ -334,6 +335,12 @@ export class OpsKit extends DGOpsApp {
           .join("")}</table>`
       : `<p class="dgops-empty">No backups yet.</p>`;
     return `<h3>Backups</h3>${rows}<div class="dgops-buttons">${btn("backupNow", "Back up now")}</div>`;
+  }
+
+  async on_editSanLog() {
+    const { editSanLog } = await import("../features/sanity.mjs");
+    await editSanLog(this.doc);
+    this.render();
   }
 
   async on_backupNow() {

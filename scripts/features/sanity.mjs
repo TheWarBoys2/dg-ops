@@ -67,6 +67,8 @@ function disorderDef(item) {
  * @param {number} [p.modifier]
  * @param {string[]} [p.tags]       Labels for extensions (e.g. "il:yellowSign"); passed to their hooks.
  * @param {boolean} [p.maxOnFail]   A failed roll takes the greatest possible loss.
+ * @param {boolean} [p.onCard]      Rolled from a SAN test card: the result goes on that card's row,
+ *                                  so no separate card unless there's something to click.
  */
 export async function sanTest({
   actor,
@@ -83,6 +85,7 @@ export async function sanTest({
   manual = false,
   tags = [],
   maxOnFail = false,
+  onCard = false,
 }) {
   if (!actor || !["agent", "npc"].includes(actor.type)) {
     ui.notifications.warn("Delta Green Ops: SAN tests need an Agent or NPC.");
@@ -146,8 +149,8 @@ export async function sanTest({
 
   // A campaign rule holds the loss back (nothing changes on the sheet); its hook keeps the number.
   if (pre.defer) {
-    const held = { outcome: o, rawLoss, loss: 0, sanAfter: sanBefore, tempInsanity: false, breakingPointHit: false, permanentInsanity: false, deferred: true };
-    await postCard({
+    const held = { outcome: o, rawLoss, loss: 0, sanAfter: sanBefore, tempInsanity: false, breakingPointHit: false, permanentInsanity: false, deferred: true, notes };
+    if (!onCard) await postCard({
       actor,
       title: `SAN loss held${source ? `: ${esc(source)}` : ""}`,
       subtitle: CAT_LABEL[category] ?? "",
@@ -161,12 +164,14 @@ export async function sanTest({
   }
 
   // Projection onto a Bond
+  let projected = null;
   if (loss > 0 && isAgent(actor) && setting("projectionPrompt") && bonds(actor).length && (sys.wp?.value ?? 0) > 0) {
     const proj = await offerProjection(actor, loss, sanBefore);
     if (proj) {
       rolls.push(proj.roll);
       notes.push(proj.note);
       loss = Math.max(0, loss - proj.sanReduction);
+      if (proj.applies) projected = { bond: proj.bond, wp: proj.roll.total, reduced: proj.sanReduction, bondLoss: proj.bondLoss };
     }
   }
 
@@ -176,9 +181,10 @@ export async function sanTest({
   if (t.breakingPointHit) updateData["system.sanity.currentBreakingPoint"] = t.newBreakingPoint;
 
   // Incident log
-  if (loss > 0) {
+  if (rawLoss > 0) {
     const logEntries = foundry.utils.deepClone(actor.getFlag(MODULE_ID, "sanLog") ?? []);
-    logEntries.push({ t: game.time.worldTime, d: Date.now(), source, category, loss });
+    const how = !o ? "fixed" : o.auto ? "adapted" : o.fumble ? "fumble" : o.critical && o.success ? "critical" : o.success ? "success" : "failure";
+    logEntries.push({ id: foundry.utils.randomID(8), t: game.time.worldTime, d: Date.now(), source, category, loss, rawLoss, rolled: o?.total ?? null, how, projected, sanBefore, sanAfter: t.sanAfter, temp: t.tempInsanity, bp: t.breakingPointHit });
     updateData[`flags.${MODULE_ID}.sanLog`] = logEntries.slice(-60);
   }
 
@@ -249,7 +255,8 @@ export async function sanTest({
     btns.push(button("repress", `Repress ${d.name}`, { args: { actorUuid: actor.uuid, kind: "acute", itemId: d.id }, owner: actor.uuid, once: `rep-${d.id}` }));
   }
 
-  await postCard({
+  // From a SAN test card with nothing to click: the result goes on the card's row instead.
+  if (!onCard || btns.length) await postCard({
     actor,
     title: `SAN loss${source ? `: ${esc(source)}` : ""}`,
     subtitle: CAT_LABEL[category] ?? "",
@@ -261,7 +268,7 @@ export async function sanTest({
     undo: loss > 0 || rawLoss > 0 ? { actorUuid: actor.uuid, snap } : null,
   });
 
-  const result = { outcome: o, rawLoss, loss, ...t, adapted: adaptResult?.becameAdapted ?? false };
+  const result = { outcome: o, rawLoss, loss, ...t, sanBefore, projected, notes: [...notes, ...extra.filter(Boolean)], adapted: adaptResult?.becameAdapted ?? false };
   await runSanResults({ actor, params, result });
   return result;
 }
@@ -304,7 +311,7 @@ async function offerProjection(actor, loss, sanBefore) {
   await update(actor, { "system.wp.value": res.wpAfter });
   if (res.applies) {
     await adjustBond(actor, bond, -res.bondLoss, { reason: "projection" });
-    return { ...res, roll, note: `Projected onto ${bond.name}: spent ${roll.total} WP, SAN loss −${res.sanReduction}, Bond −${res.bondLoss}.` };
+    return { ...res, roll, bond: bond.name, note: `Projected onto ${bond.name}: spent ${roll.total} WP, SAN loss −${res.sanReduction}, Bond −${res.bondLoss}.` };
   }
   return { ...res, roll, note: `Tried to project but spent the last of their WP (${roll.total}): no reduction.` };
 }
@@ -677,20 +684,28 @@ export async function sanGroupCard(actors, params) {
   });
 }
 
-registerContinuation("sanRow", async ({ params }, ctx) => {
-  const r = await sanTest({ actor: ctx.actor, ...params });
+/** The row on a SAN test card: everyone sees pass or fail, the owner what it cost, the Handler everything. */
+export function sanRowSummary(r) {
   if (!r) return { label: "No test" };
   if (r.skipped) return { pass: true, outcome: null, label: "No test needed", gm: "skipped by a campaign rule" };
-  if (r.deferred) return { pass: !!r.outcome?.success, outcome: r.outcome?.auto ? null : r.outcome, label: r.outcome?.success ? "Passed" : "Failed", gm: esc(`rolled ${r.outcome?.total}, ${r.rawLoss} held`) };
   const o = r.outcome;
-  const roll = o?.auto ? "adapted" : `rolled ${o?.total}`;
+  const roll = !o ? "" : o.auto ? "adapted, " : `rolled ${o.total}${o.critical && o.success ? " (critical)" : o.fumble ? " (fumble)" : ""}, `;
+  const notes = (r.notes ?? []).filter(Boolean);
+  if (r.deferred) return { pass: !!o?.success, outcome: o?.auto ? null : o, label: o?.success ? "Passed" : "Failed", gm: [esc(`${roll}${r.rawLoss} held`), ...notes.map(esc)].join(" · ") };
+  const proj = r.projected ? `projected ${r.projected.reduced} onto ${r.projected.bond} (Bond −${r.projected.bondLoss}, ${r.projected.wp} WP)` : "";
+  const own = [`−${r.loss} SAN (${r.sanBefore} → ${r.sanAfter})`, proj].filter(Boolean).join(", ");
+  const flags = [r.tempInsanity ? "temporary insanity" : "", r.breakingPointHit ? "Breaking Point" : "", r.permanentInsanity ? "0 SAN" : ""].filter(Boolean);
+  const lost = r.loss !== r.rawLoss ? `lost ${r.loss} of ${r.rawLoss}` : `lost ${r.loss}`;
   return {
     pass: !!o?.success,
     outcome: o?.auto ? null : o,
     label: `${o?.success ? "Passed" : "Failed"}: −${r.loss} SAN`,
-    gm: esc(`${roll}, lost ${r.loss}${r.tempInsanity ? ", temporary insanity" : ""}${r.breakingPointHit ? ", Breaking Point" : ""}`),
+    own,
+    gm: [esc(`${roll}${lost}, SAN ${r.sanBefore} → ${r.sanAfter}${proj ? `, ${proj}` : ""}${flags.length ? `, ${flags.join(", ")}` : ""}`), ...notes.filter((n) => !/^Projected onto/.test(n)).map((n) => (/</.test(n) ? n : esc(n)))].join(" · "),
   };
-});
+}
+
+registerContinuation("sanRow", async ({ params }, ctx) => sanRowSummary(await sanTest({ actor: ctx.actor, ...params, onCard: true })));
 
 /**
  * Run the SAN pipeline for an actor. Losses with no roll (fixed costs, already-rolled outcomes) are
@@ -829,3 +844,88 @@ export function interceptManualSan(actor, changed, options, userId) {
 }
 
 export { CAT_LABEL, disorderDef };
+
+/* ------------------------------------------------------------------------ */
+/*  SAN loss log                                                            */
+/* ------------------------------------------------------------------------ */
+
+/** One line describing a log entry, for the Kit and the editor. */
+export function sanLogLine(e) {
+  const bits = [];
+  if (e.rolled != null) bits.push(`rolled ${e.rolled}${e.how && e.how !== "success" && e.how !== "failure" ? ` (${e.how})` : ""}`);
+  else if (e.how) bits.push(e.how);
+  if (e.rawLoss != null && e.rawLoss !== e.loss) bits.push(`${e.rawLoss} before projection`);
+  if (e.projected) bits.push(`projected ${e.projected.reduced} onto ${e.projected.bond} (Bond −${e.projected.bondLoss})`);
+  if (e.temp) bits.push("temporary insanity");
+  if (e.bp) bits.push("Breaking Point");
+  if (e.edited) bits.push("edited");
+  return bits.join(", ");
+}
+
+/**
+ * Apply edits to a log (pure). `edits` maps an entry's index to { loss?, source?, category?, remove? }.
+ * Returns the new log and how much SAN that gives back (positive) or takes (negative).
+ */
+export function editLog(log, edits) {
+  let giveBack = 0;
+  const out = [];
+  log.forEach((e, i) => {
+    const ed = edits[i] ?? {};
+    const old = Math.max(0, Number(e.loss) || 0);
+    if (ed.remove) {
+      giveBack += old;
+      return;
+    }
+    const loss = ed.loss == null || ed.loss === "" ? old : Math.max(0, Math.round(Number(ed.loss) || 0));
+    const source = ed.source ?? e.source;
+    const category = ed.category ?? e.category;
+    const changed = loss !== old || source !== e.source || category !== e.category;
+    giveBack += old - loss;
+    out.push(changed ? { ...e, loss, source, category, edited: true } : e);
+  });
+  return { log: out, giveBack };
+}
+
+/** The Handler edits an Agent's SAN loss log: change numbers, rename, delete rows. */
+export async function editSanLog(actor) {
+  if (!game.user.isGM) return ui.notifications.warn("The Handler edits the SAN log.");
+  if (!actor) return ui.notifications.warn("Pick an Agent.");
+  const log = foundry.utils.deepClone(actor.getFlag(MODULE_ID, "sanLog") ?? []);
+  if (!log.length) return ui.notifications.info(`${actor.name} has no SAN loss logged.`);
+  const rows = log
+    .map((e, i) => `<tr><td><input type="text" name="s-${i}" value="${esc(e.source ?? "")}"><br><small class="dgops-quiet">${esc(sanLogLine(e))}</small></td><td><select name="c-${i}">${options(CAT_LABEL, e.category)}</select></td><td><input type="number" name="l-${i}" value="${Number(e.loss) || 0}" min="0" style="width:4em"></td><td><input type="checkbox" name="x-${i}"></td></tr>`)
+    .reverse()
+    .join("");
+  const r = await prompt({
+    title: `SAN log: ${actor.name}`,
+    width: 640,
+    content: `<p>Newest first. SAN now: <b>${Number(actor.system.sanity?.value) || 0}</b>.</p>
+      <table class="dgops-table"><tr><th>What</th><th>Kind</th><th>Lost</th><th>Delete</th></tr>${rows}</table>
+      <label class="dgops-radio"><input type="checkbox" name="adjust" checked> Change ${esc(actor.name)}'s current SAN to match (a deleted row gives its SAN back; a changed number adjusts by the difference)</label>
+      <p class="hint">Bonds, WP, Breaking Points and disorders aren't touched: change those on the sheet if they need it.</p>`,
+    buttons: [{ action: "ok", label: "Save", default: true }, { action: "no", label: "Cancel" }],
+  });
+  if (r?.action !== "ok") return null;
+  const edits = {};
+  log.forEach((_, i) => {
+    edits[i] = { source: r.data[`s-${i}`], category: r.data[`c-${i}`], loss: r.data[`l-${i}`], remove: !!r.data[`x-${i}`] };
+  });
+  return applySanLogEdits(actor, edits, { adjust: !!r.data.adjust });
+}
+
+export async function applySanLogEdits(actor, edits, { adjust = true } = {}) {
+  const log = actor.getFlag(MODULE_ID, "sanLog") ?? [];
+  const res = editLog(log, edits);
+  const data = { [`flags.${MODULE_ID}.sanLog`]: res.log };
+  const before = Number(actor.system.sanity?.value) || 0;
+  let after = before;
+  if (adjust && res.giveBack) {
+    const max = sanCap({ unnatural: actor.system.skills?.unnatural?.proficiency ?? 0, maxBonus: actor.system.sanity?.maxBonus ?? 0 });
+    after = Math.max(0, Math.min(max, before + res.giveBack));
+    data["system.sanity.value"] = after;
+  }
+  await update(actor, data, { dgOpsSan: true });
+  const removed = log.length - res.log.length;
+  ui.notifications.info(`${actor.name}: SAN log saved${removed ? `, ${removed} row${removed > 1 ? "s" : ""} deleted` : ""}${after !== before ? `; SAN ${before} → ${after}` : ""}.`);
+  return { ...res, sanBefore: before, sanAfter: after };
+}
