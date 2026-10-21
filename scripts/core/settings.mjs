@@ -143,6 +143,22 @@ export function registerSettings() {
   game.settings.register(MODULE_ID, "welcomed", { scope: "world", config: false, type: String, default: "" });
 }
 
+/**
+ * Campaign switches, registered apart from DEFS: they show in Foundry's own Configure Settings
+ * under the module and need a reload, because they decide what code loads at all.
+ */
+export function registerCampaignSettings() {
+  game.settings.register(MODULE_ID, "ilCampaign", {
+    name: "Impossible Landscapes campaign features",
+    hint: "Hidden Corruption, Gifts and Insights, the Yellow Sign, Interference, Soul Bottles, campaign tomes, and metal-and-porcelain damage. Everything is kept on the Agents, so switching this off and on again loses nothing.",
+    scope: "world",
+    config: true,
+    requiresReload: true,
+    type: Boolean,
+    default: false,
+  });
+}
+
 export const setting = (key) => {
   try {
     return game.settings.get(MODULE_ID, key);

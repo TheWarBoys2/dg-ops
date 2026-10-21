@@ -1,0 +1,20 @@
+{
+  "_id": "t4X3WzRjEJbsStdr",
+  "name": "Ramming / collision",
+  "type": "script",
+  "img": "icons/svg/explosion.svg",
+  "command": "const ops = game.modules.get(\"dg-ops\")?.api;\nif (!ops) return ui.notifications.warn(\"Delta Green: Ops Automation isn't active.\");\nif (!game.user.isGM) return ui.notifications.warn(\"That one is for the Handler.\");\nops.vehicleDialog();",
+  "scope": "global",
+  "folder": "D7xnVz83MCL9U6hL",
+  "sort": 1800000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {
+    "dg-ops": {
+      "description": "Vehicle damage, passengers, seat belts."
+    }
+  },
+  "author": null,
+  "_key": "!macros!t4X3WzRjEJbsStdr"
+}

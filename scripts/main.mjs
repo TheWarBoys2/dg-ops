@@ -2,13 +2,14 @@
  * Delta Green: Ops Automation — entry point.
  */
 import { MODULE_ID, SYSTEM_ID, STATUS, log, warn } from "./core/constants.mjs";
-import { registerSettings, setting } from "./core/settings.mjs";
+import { registerSettings, registerCampaignSettings, setting } from "./core/settings.mjs";
 import { initSocket } from "./core/socket.mjs";
 import { applyPatches, onRoll, addFlagProvider } from "./core/patches.mjs";
 import { renderRequest, renderGroup, onRequestUpdated } from "./core/requests.mjs";
 import { onRenderMessage, button, registerAction } from "./core/chat.mjs";
 import { processDue, events, schedule } from "./core/scheduler.mjs";
 import { hasSystemRolls } from "./core/system.mjs";
+import { filterDamage } from "./core/extensions.mjs";
 import * as sanity from "./features/sanity.mjs";
 import * as combat from "./features/combat.mjs";
 import * as injury from "./features/injury.mjs";
@@ -26,12 +27,15 @@ import { openWelcome, shouldWelcome } from "./apps/welcome.mjs";
 import { openKit, decorateSheetHeader, CONDITION_TEXT } from "./apps/kit.mjs";
 import { openNpcBuilder, createNpcs } from "./apps/npc-builder.mjs";
 import "./core/snapshot.mjs";
+import * as impossibleLandscapes from "./campaigns/il/index.mjs";
 
 const TESTED_SYSTEM = "2.0.1";
 
 Hooks.once("init", () => {
   if (game.system.id !== SYSTEM_ID) return;
   registerSettings();
+  registerCampaignSettings();
+  if (setting("ilCampaign")) impossibleLandscapes.init();
   const icon = (n) => `modules/${MODULE_ID}/assets/icons/${n}.svg`;
   const statuses = [
     { id: STATUS.pinned, name: "Pinned", img: icon("pinned") },
@@ -155,6 +159,7 @@ Hooks.once("ready", async () => {
     openSettings,
     openWelcome,
   };
+  if (setting("ilCampaign")) game.modules.get(MODULE_ID).api.il = impossibleLandscapes.api();
   if (shouldWelcome()) openWelcome();
   qol.dailyBackup();
   log("ready");
@@ -249,7 +254,8 @@ registerAction("applyDamageCard", async ({ message }) => {
     return false;
   }
   for (const t of targets) {
-    const res = resolveNormalDamage({ rolled: total, protection: combat.protectionOf(t), bodyArmor: Number(t.actor.system.health?.protection ?? 0), cover: combat.coverOf(t), ap: Number(item?.system?.armorPiercing) || 0 });
+    const raw = resolveNormalDamage({ rolled: total, protection: combat.protectionOf(t), bodyArmor: Number(t.actor.system.health?.protection ?? 0), cover: combat.coverOf(t), ap: Number(item?.system?.armorPiercing) || 0 });
+    const res = filterDamage({ actor: t.actor, kind: "damage", rolled: total, res: raw });
     await injury.applyDamage(t.actor, res.killed ? Infinity : res.damage, { source: item?.name ?? "Damage", attack: true, notes: res.note ? [res.note] : [] });
   }
   return `Applied to ${targets.map((t) => t.name).join(", ")}`;
@@ -264,7 +270,8 @@ registerAction("applyLethalityCard", async ({ message }) => {
     return false;
   }
   for (const t of targets) {
-    const res = resolveLethality({ rating: info.rating, total: info.total, protection: combat.protectionOf(t), bodyArmor: Number(t.actor.system.health?.protection ?? 0), cover: combat.coverOf(t), ap: Number(item?.system?.armorPiercing) || 0 });
+    const raw = resolveLethality({ rating: info.rating, total: info.total, protection: combat.protectionOf(t), bodyArmor: Number(t.actor.system.health?.protection ?? 0), cover: combat.coverOf(t), ap: Number(item?.system?.armorPiercing) || 0 });
+    const res = filterDamage({ actor: t.actor, kind: "lethality", rolled: info.total, res: raw });
     await injury.applyDamage(t.actor, res.killed ? Infinity : res.damage, { source: item?.name ?? "Lethality", attack: true, notes: [res.note].filter(Boolean) });
   }
   return `Applied to ${targets.map((t) => t.name).join(", ")}`;

@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.5.0 — 2026-10-21
+
+Impossible Landscapes campaign features, behind a switch.
+
+- **New setting: Impossible Landscapes campaign features** in Foundry's *Configure Settings* (world, needs a reload). It's off by default. While it's off, nothing campaign-related loads. All campaign numbers are kept in `flags.dg-ops.il.*`, so switching it off and on loses nothing. Page references are to the *Impossible Landscapes* book, and the module paraphrases rather than reproducing book text.
+- **Hidden Corruption (0–10, pp.17–18):**
+  - Starting values (adaptation checks + Art skills at 20%+) are confirmed once.
+  - Per-session caps by part (3/4/5/6), with gains and losses capped separately, a warning at the cap, and *New session*.
+  - The Console roster gets a Handler-only strip with Investigate/Disengage and corrections.
+  - *Who does it pick?* and a threshold check that pulls lower Agents up.
+  - Beacon at 10, and Repeater at 0 SAN with Corruption 10.
+  - Every Corruption card is whispered to the Handler from the Handler's client, even when a player's roll triggered it.
+- **Gifts and Insights (pp.259–261):** roll 1D100 + Corruption or pick. No band repeats across the team. Stored secretly; *Reveal* whispers them to the player.
+- **The Yellow Sign (p.347):** SAN 0/1D4 helplessness, once per Agent. A loss adds +1 Corruption and the compulsion to share the sign.
+- **Interference (p.351):** misfortune 4D6 hours later on the game clock, chosen by Corruption: accident 1D6, illness 1D8, violence 1D10, bizarre danger Lethality 15%.
+- **Tomes (pp.348–350):** nine presets that apply study time, SAN, Unnatural, an Art skill and Corruption in one step. They're also offered in *Study the Unnatural*.
+- **Soul Bottles (pp.343–344):**
+  - A search roll every 8 hours (or on demand).
+  - Opening a bottle costs SAN 1D10/1D100. A survivor gains 1D20 SAN, +5 Corruption and a floor of 5. Hitting 0 SAN while opening it means the Agent vanishes.
+  - A destroyed bottle means maximum loss on every failed SAN roll from then on.
+- **Metal and porcelain (pp.338, 341):** an NPC toggle. Odd damage or Lethality rolls inflict only 1, in the attack window and on the system's damage cards.
+- **11 macros** in a new *Impossible Landscapes* folder of *Ops: Handler macros* (43 Handler macros in all).
+- **Core extension points** (`scripts/core/extensions.mjs`): SAN pre-check and result hooks, `maxOnFail` in the SAN loss rules, an attack damage filter, extra *Study the Unnatural* sources, and `extendConsole()`. `sanTest` takes `tags` and `maxOnFail`.
+- **Tooling:** `package.json`, `tools/build-packs.mjs` (pack sources in `packs/_source`, recovered from the 1.4.0 packs), `tools/package.mjs`, an ESLint config, and new rules tests and mock-Foundry scenarios for the campaign features.
+
 ## 1.4.0 — 2026-10-21
 
 - **NPC builder** (macro, Console → Actions): archetype (civilian, police, federal agent, soldier, criminal, cultist, cult leader, scientist, medic, blank), how dangerous, how many; name, stats (or roll 3D6), skills; weapons and armour from the system's compendiums; folder, disposition, tokens dropped in the middle of your view, Unaware. Save any build as a template. Archetype numbers are the module's own, not book statblocks.

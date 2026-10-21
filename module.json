@@ -1,8 +1,8 @@
 {
   "id": "dg-ops",
   "title": "Delta Green: Ops Automation",
-  "description": "Rules automation for the Delta Green system: the full SAN pipeline (projection onto Bonds, temporary insanity, Breaking Point, disorders, adaptation, repression), defence prompts, Lethality and protection, kill radius and suppression, injuries and healing, hazards, pursuits, Home scenes, money and requisition, interrogation, and a Handler Console.",
-  "version": "1.4.0",
+  "description": "Rules automation for the Delta Green system: the full SAN pipeline (projection onto Bonds, temporary insanity, Breaking Point, disorders, adaptation, repression), defence prompts, Lethality and protection, kill radius and suppression, injuries and healing, hazards, pursuits, Home scenes, money and requisition, interrogation, and a Handler Console. Optional Impossible Landscapes campaign features: hidden Corruption, Gifts and Insights, the Yellow Sign, Interference, Soul Bottles, tomes and metal-and-porcelain damage.",
+  "version": "1.5.0",
   "authors": [
     {
       "name": "Jay"

@@ -4,7 +4,7 @@ Rules automation for the **Delta Green** system (`deltagreen` **2.0.1**) on **Fo
 
 Page references are to the *Agent's Handbook* (2024 printing).
 
-> **Status:** v1.4.0. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
+> **Status:** v1.5.0. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
 
 ---
 
@@ -26,7 +26,7 @@ The first time the Handler loads the world, a four-step **setup guide** opens. I
 | **Attack window** (click any weapon on a sheet; also the token HUD crosshairs and the Kit) | Everyone | Step by step: Attack / Called shot / Pin / Disarm, then the situation as dropdowns at their defaults, the targets' conditions, and the final chance with its breakdown. Shift-click a weapon to skip it. |
 | **Roll cards in chat** | Players (Handler can click for anyone) | When the automation needs a roll from an Agent, it doesn't roll it for them: a card with a Roll button goes to chat. SAN tests, opposed tests, defences, pursuits and group tests all work this way. |
 | **Chat card buttons** | Owner / Handler | Every button has a tooltip saying what it does. Damage and SAN cards get a Handler-only **Undo**. |
-| **Macro compendiums** (*Delta Green Ops* folder in the Compendium tab) | Handler / players | **Ops: Handler macros** (32, including the NPC builder, in folders: Sanity, Rolls, Combat, Hazards & medicine, Between operations, Time, Records, Tools) and **Ops: Agent macros** (Attack, Aim, Reload, Take cover, Escape a pin, Repress, Ops Kit). Drag them to the hotbar. Everything the Console does is here. |
+| **Macro compendiums** (*Delta Green Ops* folder in the Compendium tab) | Handler / players | **Ops: Handler macros** (43, including the NPC builder, in folders: Sanity, Rolls, Combat, Hazards & medicine, Between operations, Time, Records, Tools, Impossible Landscapes) and **Ops: Agent macros** (Attack, Aim, Reload, Take cover, Escape a pin, Repress, Ops Kit). Drag them to the hotbar. Everything the Console does is here. |
 | **Handler Console** (token controls → folder icon; can be hidden) | Handler | Team at a glance, Tools (with a *For* row to pick Agents without selecting tokens), Home scene, Queue & clock, and a **How do I…** guide. |
 | **Ops settings** (Configure Settings → Delta Green Ops, or the sliders in the Console) | Handler; players see interface options | Settings grouped by area in plain English, with page references and three presets: *By the book*, *Light touch*, *Everything*. |
 | `game.modules.get("dg-ops").api` | Macros | Every flow below (see *API*) |
@@ -180,6 +180,30 @@ The module dresses itself in the Delta Green system's own materials: its stained
   - Torture and "enhanced" approaches apply their damage, SAN and modifiers to both sides.
   - Truth drugs: on a failed Pharmacy roll they become a 5% poison. Alcohol gives the subject a CON test.
 
+### Impossible Landscapes (optional campaign features)
+
+Switch on **Impossible Landscapes campaign features** in Foundry's own *Configure Settings → Delta Green: Ops Automation* (it needs a reload). While it's off, none of it loads: no hooks, no Console column, no buttons, no styling, and the macros in the *Impossible Landscapes* folder just say it's off. Every number lives on the Agents (`flags.dg-ops.il.*`), so switching it off and on again loses nothing. Page references here are to the *Impossible Landscapes* campaign book. The module paraphrases; it reproduces no book text, tables or statblocks.
+
+- **Corruption, 0–10 (pp.17–18).** It's hidden: every card about it is whispered to the Handler, including ones a player's own roll sets off. (The number sits in actor flags, so a player who digs through their actor's data could find it.)
+  - **Starting Corruption:** one dialog counts +1 per checked adaptation box and +1 per Art skill at 20%+, and you confirm it once.
+  - **Per-session cap:** pick the current part in *Configure Settings* (Night Floors 3, Secret Faces 4, Map of Skin 5, End of the World 6). Gains and losses are capped separately, and you get a warning when an Agent hits the cap. **New session** resets it.
+  - **Console:** each roster card gets a Corruption strip (Handler only) with pips, *Investigate* (+1) and *Disengage* (−1), which count toward the cap, plus −/+ corrections, which don't. It also shows the session's movement and tags for Beacon, Repeater, Floor 5, a destroyed bottle, the Yellow Sign and Gifts.
+  - Rules that set Corruption directly (a tome, the Yellow Sign, a threshold, a Soul Bottle) aren't capped, but they're counted and they warn.
+  - **Who does it pick?** The highest Corruption, with ties going to the lowest SAN, from the Agents on the scene.
+  - **Threshold:** enter a minimum to see who experiences a place. If anyone qualifies, the whole group does, and the others rise to the threshold.
+  - **Beacon** at 10. **Repeater** if an Agent hits 0 SAN at Corruption 10.
+- **Gifts and Insights (pp.259–261).** Roll 1D100 + Corruption for each column, or pick. Bands never repeat across the team: a taken band moves to the nearest free one. They're stored as Handler-only flags, and **Reveal** whispers them to the player.
+- **The Yellow Sign (p.347).** A SAN 0/1D4 helplessness card. Once an Agent has failed against it, it no longer applies to them. Losing SAN adds +1 Corruption and whispers the urge to share the sign to the player, with a *They've shared it* button.
+- **Interference (p.351).** If the operator steps out of the circle, misfortune is scheduled 4D6 hours later on the game clock. When it lands, their Corruption decides what it is: 2 or less is an accident (1D6), 3 an illness (1D8), 4–7 violence (1D10), 8+ a bizarre danger (Lethality 15%).
+- **Tomes (pp.348–350).** Nine presets: *Le Roi en jaune*, the Red Book, *Libro Secretorum Manifesta*, the Philco teleplay, *Her Grey Song*, *A Song Before Travel*, the Phantom Sayeth scrapbook, *Hygromanteia* and *The Imperial Dynasty of America*. Each one applies the SAN cost, Unnatural, one Art skill (or Occult) and Corruption in one step. They also appear in the Home scene's *Study the Unnatural*.
+- **Soul Bottles (pp.343–344).** Roll 1D100 + Corruption now, or every 8 hours of game time until you stop it. Finding their own bottle offers *Open it* (SAN 1D10/1D100) or *Destroyed unopened*.
+  - Someone who opens it and stays above 0 SAN gains 1D20 SAN and +5 Corruption, and can never drop below 5 again.
+  - Someone who opens it and hits 0 SAN vanishes.
+  - A destroyed bottle means every failed SAN roll takes the maximum loss from then on.
+- **Metal and porcelain (pp.338, 341).** Toggle it on the Clockwork Child or Marionette tokens. An odd damage roll or an odd Lethality roll then inflicts only 1, both in the attack window and on the system's damage cards.
+
+Not included: clown heights, fire effects, the Gold Bug, the Coquelicots Mask, handouts and statblocks. Melonia, the King's aura, Bond symptoms, fugitive heat, NPC archetypes and a campaign visual theme may come later.
+
 ### Already in the system, so left alone
 
 Skill improvement rolls, the exhaustion / stimulant / rest buttons (Rest is wrapped, not replaced), Bond +/- buttons, Bonds following CHA, the acute-episode toggle, Breaking Point reset, Luck rolls and the character wizard.
@@ -220,6 +244,15 @@ ops.effectDialog(); ops.applySituationalEffect(actor, { preset: "gas", minutes: 
 ops.damageDialog(); ops.healDialog(); ops.toggleCondition(ops.STATUS.helpless);
 ops.teamReport(); ops.homeSceneDialog(); ops.afterTheCrisis();
 ops.backupAll(); ops.backupActor(actor); ops.restoreBackup(actor, backupId);
+
+// Only when Impossible Landscapes campaign features are on:
+const il = ops.il;
+il.corruption(actor); il.adjust(actor, +1, { reason: "Read the letter" });   // { rule: true } skips the cap, { correction: true } isn't counted
+il.startingDialog(); il.newSession(); il.whoDoesItPick(); il.thresholdDialog(); il.threshold(actors, 5);
+il.giftsDialog(actors); il.revealGift(actor);
+il.yellowSign(actors); il.interference(actor); il.readTome(actor, "redBook");
+il.bottleSearch(actors); il.openBottle(actor); il.destroyBottle(actor);
+il.toggleMetalPorcelain(npcs);
 ```
 
 ## How it hooks in (for maintenance)
@@ -234,6 +267,7 @@ ops.backupAll(); ops.backupActor(actor); ops.restoreBackup(actor, backupId);
 - **Roll requests** (`scripts/core/requests.mjs`): roll cards, Defend cards and group cards keep their state in chat-message flags, so they survive a reload. Each click is claimed through the Handler's client first, so two people can't roll the same row.
 - **Sheet rolls.** `processRoll` on the Delta Green actor sheets is wrapped so weapon clicks open the attack window. The item sheet's own roll button and modules that roll items directly (e.g. Token Action HUD) still roll the system's way; their cards get target rows all the same.
 - **State** lives in `flags.dg-ops.*` on actors, items and tokens, plus three hidden world settings (catastrophe queue, schedule, operation priority).
+- **Extension points** (`scripts/core/extensions.mjs`) keep the core campaign-agnostic: a SAN pre-check (skip a test, or take the maximum on a failure), a SAN result hook, a damage filter on attacks, extra sources for *Study the Unnatural*, and `extendConsole()` for roster strips, tiles and actions. With nothing registered they do nothing. Campaign code lives in `scripts/campaigns/<name>/` and its `init()` is called from `main.mjs` only when its setting is on.
 - **Game time** drives poisons, diseases, cold, sleep, addiction, temporary stats and recuperation. A daily upkeep event is scheduled automatically. Advance time from the Console or any calendar module.
 
 ## First run checklist
@@ -250,13 +284,16 @@ If something fails, the browser console logs lines prefixed `dg-ops |`.
 ## Development
 
 ```bash
-npm install       # jsdom 24.1.0, for the mock runtime
-npm test             # 21 rules unit tests + 56 mock-Foundry scenarios
-npm run build:packs  # macro compendiums from tools/build-packs.mjs (Foundry CLI 3.0.4)
+npm install          # Foundry CLI 3.0.4 and ESLint
+npm test             # rules unit tests + mock-Foundry scenarios
+npm run lint
+npm run build:packs  # macro compendiums from packs/_source (the IL macros are defined in tools/build-packs.mjs)
 npm run package      # builds the packs, then dg-ops.zip (no tests, no sources, no node_modules)
 ```
 
-`scripts/rules/` is pure and has no Foundry dependency. `scripts/core/` is the Foundry glue. `scripts/features/` holds the automation flows, and `scripts/apps/` the Console and Pursuit windows.
+`test/rules.test.mjs` covers the pure rules. `test/scenarios.mjs` runs the module's real code against `test/mock-foundry.mjs`, with scripted dice and a socket that hands messages between the Handler and a player in one process. Both started with the Impossible Landscapes work in 1.5.0. The older suites (21 rules tests and 56 scenarios) weren't in this repository, so they need adding back alongside these. `packs/_source` was recovered from the compiled 1.4.0 packs, and a round trip through the CLI matches it.
+
+`scripts/rules/` (and `scripts/campaigns/*/rules.mjs`) is pure and has no Foundry dependency. `scripts/core/` is the Foundry glue. `scripts/features/` holds the automation flows, and `scripts/apps/` the Console and Pursuit windows.
 
 ## Licence
 

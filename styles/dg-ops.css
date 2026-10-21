@@ -517,3 +517,21 @@ body.dgops-style-cowboy { --dgo-body: "SpecialElite", "Courier New", monospace; 
 .dgops-home-row h4 { display: flex; align-items: center; gap: 6px; }
 .dgops-home-row h4 img { width: 24px; height: 24px; object-fit: cover; border: 1px solid var(--dg-line); }
 .dgops-clockbig { font-family: var(--dg-head); font-weight: 700; font-size: 20px; margin: 2px 0 6px; }
+
+/* ---------------- Impossible Landscapes (only with the campaign setting on) ---------------- */
+body.dgops-il-on .dgops-il { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; padding: 3px 4px; border: 1px dashed #b8a14a; border-radius: 2px; background: rgba(214, 186, 64, 0.08); font-size: 11px; }
+body.dgops-il-on .dgops-il__label { text-transform: uppercase; letter-spacing: 0.06em; font-size: 9px; color: #8a7425; }
+body.dgops-il-on .dgops-il__pips { display: inline-flex; gap: 1px; }
+body.dgops-il-on .dgops-il__pips i { width: 6px; height: 9px; border: 1px solid #8a7425; background: transparent; }
+body.dgops-il-on .dgops-il__pips i.on { background: #c9a227; }
+body.dgops-il-on .dgops-il__pips i.floor { border-bottom-width: 3px; }
+body.dgops-il-on .dgops-il__num { min-width: 1.4em; text-align: center; }
+body.dgops-il-on .dgops-il__btns { display: inline-flex; gap: 3px; }
+body.dgops-il-on .dgops-il__btns a { padding: 0 4px; border: 1px solid var(--dg-ink-soft); border-radius: 2px; cursor: pointer; }
+body.dgops-il-on .dgops-il__btns a:hover { background: rgba(214, 186, 64, 0.25); }
+body.dgops-il-on .dgops-il__session { color: var(--dg-ink-soft); }
+body.dgops-il-on .dgops-il__session.hit { color: var(--dg-warn); font-weight: bold; }
+body.dgops-il-on .dgops-il__tags { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+body.dgops-il-on .dgops-il__tags .flag { font-size: 10px; padding: 0 4px; border: 1px solid var(--dg-ink-soft); border-radius: 2px; color: var(--dg-ink-soft); }
+body.dgops-il-on .dgops-il__tags .flag.warn { border-color: var(--dg-warn); color: var(--dg-warn); }
+body.dgops-il-on .dgops-il__tags .flag.bad { border-color: var(--dg-bad); color: #fff; background: var(--dg-bad); }

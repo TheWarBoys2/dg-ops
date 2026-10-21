@@ -37,6 +37,7 @@ import {
   resolveNormalDamage,
 } from "../rules/combat.mjs";
 import { applyDamage } from "./injury.mjs";
+import { filterDamage } from "../core/extensions.mjs";
 import { isAdapted } from "./sanity.mjs";
 
 const RANGED_SKILLS = new Set(["firearms", "heavy_weapons", "artillery", "athletics", "demolitions"]);
@@ -863,7 +864,7 @@ async function applyHit({ attacker, item, prof, token, critical, critMode = "dou
   if (prof.lethal && prof.lethality > 0) {
     const lr = await evalFormula("1d100");
     rolls.push(lr);
-    const res = resolveLethality({ rating: prof.lethality, total: lr.total, attackCritical: critical && critMode === "double", protection, bodyArmor: armor, cover: coverArmor, ap });
+    const res = filterDamage({ actor, kind: "lethality", rolled: lr.total, res: resolveLethality({ rating: prof.lethality, total: lr.total, attackCritical: critical && critMode === "double", protection, bodyArmor: armor, cover: coverArmor, ap }) });
     lines.push(`Lethality ${res.rating}%: rolled ${lr.total} → ${res.killed ? "<b>LETHAL</b>" : `${res.dice.join(" + ")}`}${res.note ? ` (${esc(res.note)})` : ""}`);
     killed = res.killed;
     amount = res.damage;
@@ -883,7 +884,7 @@ async function applyHit({ attacker, item, prof, token, critical, critMode = "dou
     if (critical && critMode === "double") f = `2*(${f})`;
     const dr = await evalFormula(f);
     rolls.push(dr);
-    const res = resolveNormalDamage({ rolled: Math.max(0, dr.total), protection, bodyArmor: armor, cover: coverArmor, ap, hollowPoint: atk.ammo === "hp", apAmmo: atk.ammo === "ap", fleshWound: called.effect === "fleshWound" });
+    const res = filterDamage({ actor, kind: "damage", rolled: dr.total, res: resolveNormalDamage({ rolled: Math.max(0, dr.total), protection, bodyArmor: armor, cover: coverArmor, ap, hollowPoint: atk.ammo === "hp", apAmmo: atk.ammo === "ap", fleshWound: called.effect === "fleshWound" }) });
     lines.push(`${esc(f)} = ${dr.total}${res.note ? ` (${esc(res.note)})` : ""} → <b>${res.killed ? "0 HP" : res.damage}</b>`);
     killed = res.killed;
     amount = res.damage;
