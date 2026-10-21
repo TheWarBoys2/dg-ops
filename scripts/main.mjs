@@ -114,6 +114,7 @@ Hooks.once("ready", async () => {
     openChase,
     sanTest: sanity.sanTest,
     sanDialog: sanity.sanDialog,
+    editSanLog: sanity.editSanLog,
     assignDisorder: sanity.assignDisorder,
     repress: sanity.repress,
     destroyedUnnatural: sanity.destroyedUnnatural,

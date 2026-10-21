@@ -342,7 +342,8 @@ export function renderRequest(message, element) {
 
 /**
  * One card, one row per actor. Each row's button runs `run` for that actor on the clicker's client.
- * The continuation returns { pass?: boolean, label?: string, gm?: string } for the row.
+ * The continuation returns { pass?: boolean, label?: string, own?: string, gm?: string } for the row:
+ * `own` is shown to the actor's owners, `gm` (HTML) to the Handler.
  *
  * @param {object} p
  * @param {string} p.title
@@ -441,6 +442,7 @@ registerHandler("gmGroupRowDone", async (messageId, rowId, result) => {
       [`flags.${MODULE_ID}.group.rows.${rowId}.pass`]: r.pass ?? null,
       [`flags.${MODULE_ID}.group.rows.${rowId}.label`]: r.label ?? null,
       [`flags.${MODULE_ID}.group.rows.${rowId}.gm`]: r.gm ?? null,
+      [`flags.${MODULE_ID}.group.rows.${rowId}.own`]: r.own ?? null,
       [`flags.${MODULE_ID}.group.rows.${rowId}.outcome`]: r.outcome ?? null,
     });
     const group = message.getFlag(MODULE_ID, "group");
@@ -480,7 +482,7 @@ export function renderGroup(message, element) {
       else if (r.state === "skipped") right = `<span class="dgops-quiet">Skipped</span>`;
       else if (group.reveal === "passfail" && r.pass !== null && r.pass !== undefined) right = `<span class="dgops-badge ${r.pass ? "success" : "fail"}">${r.pass ? "Passed" : "Failed"}</span>`;
       else right = `<span class="dgops-quiet">${esc(isGM || mine ? r.label ?? "Rolled" : "Rolled")}</span>`;
-      const gmLine = isGM && r.gm ? `<span class="dgops-trow__gm">${r.gm}</span>` : "";
+      const gmLine = isGM && r.gm ? `<span class="dgops-trow__gm">${r.gm}</span>` : !isGM && mine && r.own ? `<span class="dgops-trow__gm">${esc(r.own)}</span>` : "";
       return `<div class="dgops-trow" data-state="${r.state}"><img src="${esc(r.img)}" alt=""><span class="dgops-trow__name">${esc(r.name)}${gmLine}</span><span class="dgops-trow__act">${right}</span></div>`;
     })
     .join("");

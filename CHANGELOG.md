@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.0 — 2026-10-21
+
+- **SAN results stay on the SAN test card.** Rolling from a SAN test card no longer posts a separate *SAN loss* card per Agent. Each row now shows:
+  - for everyone, pass or fail;
+  - for the owner, what it cost (−N SAN, before → after, and any projection);
+  - for the Handler, the roll, the loss before and after projection, which Bond took it, SAN before and after, and notes such as adaptation.
+  - A separate card still appears when there's something to click (temporary insanity, Breaking Point, 0 SAN, an acute episode). Night World holds go on the row too.
+- **Fuller SAN loss log:** each entry now records the roll, the result (success, failure, critical, fumble, adapted or fixed), the loss before projection, the projection (Bond, amount, Bond loss, WP), SAN before and after, temporary insanity and Breaking Point. A loss fully projected away is logged too. The Ops Kit's Case log shows the detail.
+- **Edit the SAN log** (Handler, in the Ops Kit's Case log, the *Edit SAN log* macro in *Sanity*, or `api.editSanLog(actor)`): change numbers, rename or recategorise rows, and delete rows, with an option to adjust current SAN to match. Edited rows are marked.
+- Group-card rows can carry an owner-only line (`own`) alongside the Handler's (`gm`).
+
 ## 1.6.2 — 2026-10-21
 
 - **Fix: players could see Handler-only cards their own rolls set off**, for example *SAN loss held* in the Night World. Foundry always shows a whisper to the user who sent it. Any card whispered only to the Handler is now created by the Handler's client, even when a player's click triggered it.

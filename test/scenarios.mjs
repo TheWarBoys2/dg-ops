@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { dice, dialogs, makeAgent, chat, preset, hooks, settingDefs, asPlayer, asGM } from "./mock-foundry.mjs";
 
-preset("welcomed", "1.6.2");
+preset("welcomed", "1.7.0");
 preset("backups", false);
 
 const main = await import("../scripts/main.mjs");
@@ -422,6 +422,58 @@ test("Schedule by hand: at a time, repeating, posted to everyone", async () => {
   dialogs.push({ action: "ok", data: { title: "Too late", when: "at", day: 1, time: "00:00", rn: 0, runit: 86400, show: "gm" } });
   await clock.reminderDialog();
   assert.ok(ui.notifications.warns.some((w) => /already passed/.test(w)));
+});
+
+/* ---------------- SAN results on the test card, and the log ---------------- */
+
+test("SAN test card: a plain result goes on the row, not a new card, and is logged in full", async () => {
+  fresh();
+  const { sanRowSummary } = await import("../scripts/features/sanity.mjs");
+  const a = makeAgent({ name: "Rowan", san: 53, bp: 30, owners: ["p1"] });
+  dice.push(70, 3); // fail, 1D6 → 3
+  const r = await sanTest({ actor: a, successLoss: "0", failureLoss: "1D6", category: "unnatural", source: "The corpse", onCard: true });
+  assert.equal(a.system.sanity.value, 50);
+  assert.equal(chat().filter((m) => /SAN loss/.test(m.content)).length, 0, "no separate SAN loss card");
+  const row = sanRowSummary(r);
+  assert.equal(row.pass, false);
+  assert.equal(row.own, "−3 SAN (53 → 50)");
+  assert.match(row.gm, /rolled 70, lost 3, SAN 53 → 50/);
+  const e = a.flags["dg-ops"].sanLog.at(-1);
+  assert.deepEqual([e.loss, e.rawLoss, e.rolled, e.how, e.sanBefore, e.sanAfter, e.temp], [3, 3, 70, "failure", 53, 50, false]);
+  assert.ok(e.id);
+});
+
+test("SAN test card: temporary insanity still gets its own card (it has buttons)", async () => {
+  fresh();
+  const a = makeAgent({ name: "Shaken", san: 60, bp: 20, owners: ["p1"] });
+  dice.push(80, 6);
+  const r = await sanTest({ actor: a, successLoss: "0", failureLoss: "1D6", category: "unnatural", source: "x", onCard: true });
+  assert.equal(r.tempInsanity, true);
+  assert.equal(chat().filter((m) => /Temporary insanity/.test(m.content)).length, 1);
+});
+
+test("SAN log: edit numbers, rename, delete rows, and put SAN right", async () => {
+  fresh();
+  const { editLog, applySanLogEdits, sanLogLine } = await import("../scripts/features/sanity.mjs");
+  const log = [
+    { source: "A", category: "violence", loss: 4 },
+    { source: "B", category: "unnatural", loss: 2, rawLoss: 5, projected: { bond: "Mum", reduced: 3, bondLoss: 3, wp: 3 } },
+    { source: "C", category: "other", loss: 1 },
+  ];
+  assert.match(sanLogLine(log[1]), /projected 3 onto Mum/);
+  const res = editLog(log, { 0: { loss: 2 }, 2: { remove: true }, 1: { source: "B2" } });
+  assert.equal(res.giveBack, 3);
+  assert.deepEqual(res.log.map((e) => [e.source, e.loss, !!e.edited]), [["A", 2, true], ["B2", 2, true]]);
+  const a = makeAgent({ name: "Logged", san: 40, unnatural: 0, owners: ["p1"], flags: { "dg-ops": { sanLog: log } } });
+  await applySanLogEdits(a, { 0: { loss: 2 }, 2: { remove: true } });
+  assert.equal(a.system.sanity.value, 43);
+  assert.equal(a.flags["dg-ops"].sanLog.length, 2);
+  await applySanLogEdits(a, { 0: { loss: 5 } }, { adjust: false });
+  assert.equal(a.system.sanity.value, 43, "only the log changes");
+  dialogs.push({ action: "ok", data: { "s-0": "A", "c-0": "violence", "l-0": 5, "x-0": false, "s-1": "B", "c-1": "unnatural", "l-1": 2, "x-1": true, adjust: true } });
+  await game.modules.get("dg-ops").api.editSanLog(a);
+  assert.equal(a.flags["dg-ops"].sanLog.length, 1);
+  assert.equal(a.system.sanity.value, 45);
 });
 
 let failed = 0;
