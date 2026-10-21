@@ -17,6 +17,7 @@ export const CATEGORIES = {
 
 export const DEFS = {
   // Sanity
+  hideSanLoss: { cat: "sanity", label: "Hide the possible SAN loss from players", hint: "SAN cards don't show players what's at stake (e.g. 1/1D6), and the loss dice are rolled for the Handler only. Players still see what they actually lose once it lands.", type: Boolean, default: false },
   projectionPrompt: { cat: "sanity", label: "Ask players to project SAN loss onto a Bond", hint: "Before a loss lands, the player sees what it will do (insanity? Breaking Point?) and can spend 1D4 WP to reduce it at a Bond's expense.", page: 74, type: Boolean, default: true },
   autoAcute: { cat: "sanity", label: "Start acute episodes automatically", hint: "When a disorder's trigger fires (2+ SAN lost, temporary insanity, Breaking Point), switch its acute episode on and offer Repress.", page: 69, type: Boolean, default: true },
   dgBonds: { cat: "sanity", label: "Queue Delta Green Bond tests after a team catastrophe", hint: "Insanity, new disorders, incapacitation and deaths add an entry to the Console queue. Roll it once the crisis is over.", page: 37, type: Boolean, default: true },

@@ -17,7 +17,10 @@ import { DISORDERS, disordersForCause, PERMANENT_INSANITY } from "../rules/disor
 import { disorderIdFor } from "./readiness.mjs";
 import { snapshot } from "../core/snapshot.mjs";
 import { teamOnScene } from "../core/team.mjs";
-import { runSanPreChecks, runSanResults, sanDialogHtml, sanDialogParams } from "../core/extensions.mjs";
+import { runSanPreChecks, runSanResults, sanDialogHtml, sanDialogParams, sanLossSecret } from "../core/extensions.mjs";
+
+/** Players don't get to see what's at stake: no loss formula on cards, loss dice for the Handler only. */
+export const lossHidden = (actor, params = {}) => !!(setting("hideSanLoss") || sanLossSecret({ actor, params }));
 
 const CAT_TIP = {
   violence: "Violence: three losses in a row without insanity adapts the Agent, at a cost to CHA and Bonds (p.73).",
@@ -97,6 +100,7 @@ export async function sanTest({
   maxOnFail = maxOnFail || pre.maxOnFail;
   const notes = [...pre.notes];
   const rolls = [];
+  const gmRolls = []; // loss dice the players mustn't see
   let rawLoss;
   let o = outcome;
   const snap = snapshot(actor);
@@ -113,18 +117,20 @@ export async function sanTest({
       o = t.outcome;
     }
     // Only the loss that applies is rolled (criticals and fumbles need no roll at all).
-    const whisper = sanWhisper(actor);
+    const hidden = lossHidden(actor, params);
+    const whisper = hidden ? gmWhisper() : sanWhisper(actor);
+    const lossOpts = hidden ? { whisper, blind: true } : { whisper };
     let rolledSuccess = 0;
     let rolledFailure = 0;
     if (o.success && !o.critical) {
-      const r = await evalFormula(successLoss || "0", {}, { whisper });
+      const r = await evalFormula(successLoss || "0", {}, lossOpts);
       rolledSuccess = r.total;
-      if (r.dice.length) rolls.push(r);
+      if (r.dice.length) (hidden ? gmRolls : rolls).push(r);
     }
     if (!o.success && !o.fumble) {
-      const r = await evalFormula(failureLoss || "0", {}, { whisper });
+      const r = await evalFormula(failureLoss || "0", {}, lossOpts);
       rolledFailure = r.total;
-      if (r.dice.length) rolls.push(r);
+      if (r.dice.length) (hidden ? gmRolls : rolls).push(r);
     }
     rawLoss = computeSanLoss({ outcome: o, successFormula: successLoss, failureFormula: failureLoss, rolledSuccess, rolledFailure, victims, perVictim, maxOnFail });
     if (o.critical && o.success) notes.push("Critical success: least possible loss.");
@@ -146,7 +152,7 @@ export async function sanTest({
       title: `SAN loss held${source ? `: ${esc(source)}` : ""}`,
       subtitle: CAT_LABEL[category] ?? "",
       body: list([o && !o.auto ? `SAN test: ${outcomeBadge(o)} (${o.total})` : "", `Loss: <b>${rawLoss}</b>, not applied yet.`, esc(pre.defer), ...notes.map(esc)]),
-      rolls,
+      rolls: [...rolls, ...gmRolls],
       whisper: gmWhisper(),
       kind: "san",
     });
@@ -660,9 +666,10 @@ export async function sanGroupCard(actors, params) {
   const list_ = actors.filter((a) => ["agent", "npc"].includes(a?.type));
   if (!list_.length) return null;
   const { createGroupCard } = await import("../core/requests.mjs");
+  const stake = list_.some((a) => lossHidden(a, params)) ? "" : `${esc(params.successLoss || "0")}/${esc(params.failureLoss || "0")} · `;
   return createGroupCard({
     title: `SAN test${params.source ? `: ${esc(params.source)}` : ""}`,
-    subtitle: `${esc(params.successLoss || "0")}/${esc(params.failureLoss || "0")} · ${CAT_LABEL[params.category] ?? ""}`,
+    subtitle: `${stake}${CAT_LABEL[params.category] ?? ""}`,
     kind: "san",
     tip: CAT_TIP[params.category] ?? "",
     rows: list_.map((actor) => ({ actor, run: "sanRow", args: { params }, button: "Roll SAN" })),

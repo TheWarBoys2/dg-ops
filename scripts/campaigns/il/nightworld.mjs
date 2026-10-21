@@ -9,7 +9,8 @@ import { postCard, gmWhisper, list } from "../../core/chat.mjs";
 import { prompt, esc, options } from "../../core/ui.mjs";
 import { gm, registerHandler } from "../../core/socket.mjs";
 import { runForActor } from "../../features/sanity.mjs";
-import { addSanDialogField } from "../../core/extensions.mjs";
+import { addSanDialogField, addSanSecrecy } from "../../core/extensions.mjs";
+import { MODULE_ID } from "../../core/constants.mjs";
 import { il, setIl } from "./state.mjs";
 
 export const TAG = "il:nightWorld";
@@ -105,17 +106,27 @@ export async function nightWorldDialog(actors) {
 
 /* ---------------- SAN hooks ---------------- */
 
+const inNightWorld = (actor, params) => actor?.type === "agent" && !params?.tags?.includes("il:openBottle") && (params?.tags?.includes(TAG) || nightWorldOf(actor).inside);
+
+function hideSetting() {
+  try {
+    return game.settings.get(MODULE_ID, "ilNightWorldHide") !== false;
+  } catch {
+    return true;
+  }
+}
+
+/** Night World tests: players see pass or fail and nothing about the loss (setting, on by default). */
+export const secrecy = ({ actor, params }) => hideSetting() && inNightWorld(actor, params);
+
 export function sanPreCheck({ actor, params }) {
-  if (actor?.type !== "agent") return null;
-  // Opening a Soul Bottle needs the result straight away (it decides whether they vanish).
-  if (params.tags?.includes("il:openBottle")) return null;
-  if (params.tags?.includes(TAG) || nightWorldOf(actor).inside) return { defer: "In the Night World: held until they leave." };
-  return null;
+  // Opening a Soul Bottle is never held: it decides on the spot whether they vanish.
+  return inNightWorld(actor, params) ? { defer: "In the Night World: held until they leave." } : null;
 }
 
 export async function sanResult({ actor, params, result }) {
   if (!result?.deferred || actor?.type !== "agent") return;
-  if (!(params.tags?.includes(TAG) || nightWorldOf(actor).inside)) return;
+  if (!inNightWorld(actor, params)) return;
   if (result.rawLoss > 0) await holdLoss(actor, result.rawLoss, { source: params.source || "SAN test", category: params.category });
 }
 
@@ -136,6 +147,7 @@ export function registerNightWorld() {
     html: () => `<label class="dgops-radio"><input type="checkbox" name="ilNightWorld"> In the Night World: hold the loss until they leave</label>`,
     read: (data) => (data?.ilNightWorld ? { tags: [TAG] } : null),
   });
+  addSanSecrecy(secrecy);
   registerHandler("ilNightHold", async (uuid, amount, o) => holdLoss(await fromUuid(uuid), amount, o ?? {}));
 }
 

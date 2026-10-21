@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.1 — 2026-10-21
+
+- **New setting: Hide the possible SAN loss from players** (Sanity & Bonds, off by default). SAN cards stop showing the loss in play (e.g. 1/1D6), and the loss dice roll for the Handler only. The actual loss still shows once it lands.
+- **Impossible Landscapes: Night World SAN tests show players only pass or fail.** This is a new setting, on by default. While a loss is held, players see neither the loss in play nor the loss dice, whatever the general setting says.
+- Core: extensions can hide the loss with `addSanSecrecy(fn)`. `api` users get `lossHidden(actor, params)` through the sanity feature module.
+
 ## 1.6.0 — 2026-10-21
 
 - **Set date & time** (Console top bar and *Clock & queue*, plus a macro in *Time*). You can set the game clock to a calendar date or to a Day number and time. *Move the clock* advances game time, so everything due in between happens (a jump of more than 60 days asks first). *Just relabel it* changes what the clock reads without moving anything on the schedule. The setting is the world setting `clock` (`{ mode, offset }`). Until it's set, the Console shows Foundry's calendar as before.

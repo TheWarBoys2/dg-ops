@@ -7,6 +7,7 @@
  *                     `defer` rolls the test and works out the loss but doesn't apply it: the result
  *                     hooks get { deferred: true, rawLoss } and decide what to do with it.
  *  - SAN dialog fields: { html: () → string, read(data) → { tags?: string[] } } added to the SAN test dialog.
+ *  - SAN secrecy:    fn({ actor, params }) → true to hide the possible loss and the loss dice from players.
  *  - SAN results:     fn({ actor, params, result }) after the loss has landed and the card is posted.
  *  - Damage filters:  fn({ actor, kind: "damage" | "lethality", rolled, res }) → res | null
  *                     Runs on an attack's resolved damage, before it's applied. Return a changed copy.
@@ -19,6 +20,22 @@ const sanResults = [];
 const damageFilters = [];
 const studySources = [];
 const sanDialogFields = [];
+const sanSecrecy = [];
+
+export function addSanSecrecy(fn) {
+  sanSecrecy.push(fn);
+}
+
+export function sanLossSecret(ctx) {
+  return sanSecrecy.some((fn) => {
+    try {
+      return !!fn(ctx);
+    } catch (e) {
+      warn("SAN secrecy check failed", e);
+      return false;
+    }
+  });
+}
 
 export function addSanDialogField(f) {
   sanDialogFields.push(f);
@@ -97,5 +114,5 @@ export function filterDamage({ actor, kind, rolled, res }) {
 
 /** Number of registered extensions of every kind (for tests and the setup guide). */
 export function extensionCount() {
-  return sanPreChecks.length + sanResults.length + damageFilters.length + studySources.length + sanDialogFields.length;
+  return sanPreChecks.length + sanResults.length + damageFilters.length + studySources.length + sanDialogFields.length + sanSecrecy.length;
 }

@@ -35,6 +35,14 @@ export function init() {
     choices: Object.fromEntries(Object.entries(OPERATIONS).map(([k, v]) => [k, `${v.label} (cap ${v.cap})`])),
     default: "night-floors",
   });
+  game.settings.register(MODULE_ID, "ilNightWorldHide", {
+    name: "Impossible Landscapes: Night World SAN tests show players only pass or fail",
+    hint: "While a SAN loss is being held for the Night World, players don't see the loss in play or the loss dice, whatever the general Sanity setting says.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+  });
   game.settings.register(MODULE_ID, "ilSession", { scope: "world", config: false, type: Number, default: 1 });
   state.registerStateHandlers();
   gifts.registerGiftActions();
