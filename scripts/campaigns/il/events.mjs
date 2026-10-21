@@ -42,7 +42,8 @@ async function sanResult({ actor, params, result }) {
   // The Yellow Sign: once failed, never again; any loss adds Corruption and the compulsion (p.347).
   if (tags.includes(TAG.sign) && result.outcome && !result.outcome.success) {
     await setIlQuietly(actor, { yellowSign: { failed: true, shared: false } });
-    if (result.loss > 0) {
+    // A loss held in the Night World still counts: it will land.
+    if ((result.deferred ? result.rawLoss : result.loss) > 0) {
       await adjustCorruption(actor, 1, { rule: true, reason: "The Yellow Sign" });
       await postCard({ actor, title: "The mark", body: `<p>${esc(actor.name)} can't stop thinking about the shape they saw. They'd feel better if someone else saw it too: they have to draw, write or paint it somewhere it will be seen. Until they do, sleep brings only nightmares they can't remember (p.347).</p><div class="dgops-buttons">${button("ilSignShared", "They've shared it", { args: { actorUuid: actor.uuid }, owner: actor.uuid, once: "shared" })}</div>`, whisper: ownersAndGm(actor) });
     }

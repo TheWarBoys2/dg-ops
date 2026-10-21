@@ -10,6 +10,7 @@ import { MODULE_ID, STATUS } from "../core/constants.mjs";
 import { esc, options } from "../core/ui.mjs";
 import { setWorld, hasStatus } from "../core/ops.mjs";
 import { events, cancel, formatDue } from "../core/scheduler.mjs";
+import { clockText, clockConfig, setClockDialog, reminderDialog } from "../features/clock.mjs";
 import { PURSUITS } from "../rules/home.mjs";
 import { PROTECTION } from "../rules/combat.mjs";
 import { DGOpsApp, btn } from "./base.mjs";
@@ -27,6 +28,7 @@ import { openChase } from "./chase.mjs";
 import { analyzeActor } from "../features/readiness.mjs";
 
 const agents = () => activeAgents();
+const dueText = (due) => (clockConfig().mode === "auto" ? "" : clockText(due));
 
 const selectedActorsRaw = () => canvas?.tokens?.controlled?.map((t) => t.actor).filter(Boolean) ?? [];
 const selectedTokensRaw = () => canvas?.tokens?.controlled?.map((t) => t.document) ?? [];
@@ -44,20 +46,6 @@ const selectedTokens = () => {
   return selectedActors().map((a) => a.getActiveTokens?.(true, true)?.[0]?.document ?? a.getActiveTokens?.(true, true)?.[0]).filter(Boolean);
 };
 
-/** In-game clock, as the world's calendar (if any) or days and time since the start. */
-function clockText() {
-  const t = game.time.worldTime;
-  try {
-    const c = game.time.calendar;
-    if (c?.timeToComponents && c?.format) return c.format(t);
-  } catch {
-    /* fall back */
-  }
-  const d = Math.floor(t / 86400);
-  const h = Math.floor((t % 86400) / 3600);
-  const m = Math.floor((t % 3600) / 60);
-  return `Day ${d + 1}, ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
 
 /** Actions: [action, label, icon, hint, needs] — needs: "agents" | "tokens" | null. */
 const TILES = {
@@ -150,7 +138,7 @@ export class HandlerConsole extends DGOpsApp {
     const prio = game.settings.get(MODULE_ID, "opPriority");
     return `<header class="dgops-console__top">
       <span class="dgops-clock" data-tooltip="Game time"><i class="fas fa-clock"></i> ${esc(clockText())}</span>
-      <span class="dgops-quick">${[["+10 min", 600], ["+1 h", 3600], ["+1 day", 86400]].map(([l, s]) => btn("advance", l, { s }, "subtle")).join("")}</span>
+      <span class="dgops-quick">${[["+10 min", 600], ["+1 h", 3600], ["+1 day", 86400]].map(([l, s]) => btn("advance", l, { s }, "subtle")).join("")}${btn("clockSet", "Set…", {}, "subtle")}</span>
       <label class="dgops-prio" data-tooltip="Operation priority: ±20% to requisitions">Priority <select data-dgops-change="prio">${options({ low: "Low", normal: "Normal", high: "High" }, prio)}</select></label>
       ${q ? `<a class="dgops-alertchip" data-dgops-app="tab" data-tab="queue"><i class="fas fa-bell"></i> ${q} catastrophe${q > 1 ? "s" : ""} queued</a>` : ""}
     </header>`;
@@ -302,12 +290,13 @@ export class HandlerConsole extends DGOpsApp {
     const evs = events().sort((a, b) => a.due - b.due);
     return `<h3>Game time</h3>
       <p class="dgops-clockbig"><i class="fas fa-clock"></i> ${esc(clockText())}</p>
-      <div class="dgops-buttons">${[["1 turn", 6], ["10 min", 600], ["1 hour", 3600], ["8 hours", 28800], ["1 day", 86400], ["1 week", 604800]].map(([l, s]) => btn("advance", `+${l}`, { s })).join("")}</div>
+      <div class="dgops-buttons">${[["1 turn", 6], ["10 min", 600], ["1 hour", 3600], ["8 hours", 28800], ["1 day", 86400], ["1 week", 604800]].map(([l, s]) => btn("advance", `+${l}`, { s })).join("")}${btn("clockSet", "Set date & time…", {}, "primary")}</div>
       <p class="dgops-quiet">Poison, disease, cold, situational effects, sleep limits, addiction, temporary stats and recuperation run on game time.</p>
       <h3>Delta Green Bond tests (p.37)</h3>
       ${q.length ? `<table class="dgops-table">${q.map((c) => `<tr><td>${esc(c.name)} ${esc(c.what)}</td><td>${c.present.length} present</td><td class="dgops-actions">${btn("queueResolve", "After the crisis: roll", { id: c.id }, "primary")}${btn("queueDrop", "Drop", { id: c.id }, "subtle")}</td></tr>`).join("")}</table>` : `<p class="dgops-empty">Nothing queued.</p>`}
       <h3>Scheduled</h3>
-      ${evs.length ? `<table class="dgops-table">${evs.map((e) => `<tr><td>${esc(e.label || e.type)}</td><td>${formatDue(e.due)}</td><td class="dgops-actions">${e.type === "daily" ? "" : btn("eventCancel", "Cancel", { id: e.id }, "subtle")}</td></tr>`).join("")}</table>` : `<p class="dgops-empty">No scheduled events.</p>`}`;
+      <div class="dgops-buttons">${btn("reminderAdd", "Add to the schedule…", {}, "primary")}</div>
+      ${evs.length ? `<table class="dgops-table">${evs.map((e) => `<tr><td>${esc(e.label || e.type)}${e.type === "manual" && e.data?.notes ? `<br><small class="dgops-quiet">${esc(e.data.notes)}</small>` : ""}</td><td>${formatDue(e.due)}${dueText(e.due) ? `<br><small class="dgops-quiet">${esc(dueText(e.due))}</small>` : ""}</td><td class="dgops-actions">${e.type === "daily" ? "" : btn("eventCancel", "Cancel", { id: e.id }, "subtle")}</td></tr>`).join("")}</table>` : `<p class="dgops-empty">No scheduled events.</p>`}`;
   }
 
   /* ---- Guide ---- */
@@ -320,6 +309,8 @@ export class HandlerConsole extends DGOpsApp {
       ["I need NPCs right now", "Actions → NPC builder (or the macro). Pick an archetype and how dangerous they are; weapons and armour come from the system's compendiums, and the tokens land in the middle of your view."],
       ["Who sees a roll?", "The roll-mode selector above the chat box decides, for the module's rolls as for the system's. Each card's header says who can see it."],
       ["Someone is hurt", "Damage cards handle stun, unconsciousness, death and permanent injury. For care, use Medical care: First Aid once per injury, treatment weekly, recuperation daily."],
+      ["Set the date or time", "Clock & queue → Set date & time…: move the clock (things due happen) or just relabel it."],
+      ["Remind me later in game time", "Clock & queue → Add to the schedule…: once or repeating, for you or for everyone."],
       ["Poison, disease, a fall, fire, cold", "Actions → Hazard. Poisons and diseases run on game time, so advance the clock."],
       ["A chase", "Actions → Pursuit. Pick both sides, then each round both roll on the card."],
       ["Between operations", "Home scene tab: what changed for each Agent, then hand out the pursuits. End the Home scene to clear the damaged-Bond marks."],
@@ -492,6 +483,14 @@ export class HandlerConsole extends DGOpsApp {
   }
   async on_eventCancel(ds) {
     await cancel({ id: ds.id });
+    this.render();
+  }
+  async on_clockSet() {
+    await setClockDialog();
+    setTimeout(() => this.rendered && this.render(), 300);
+  }
+  async on_reminderAdd() {
+    await reminderDialog();
     this.render();
   }
   async on_advance(ds) {

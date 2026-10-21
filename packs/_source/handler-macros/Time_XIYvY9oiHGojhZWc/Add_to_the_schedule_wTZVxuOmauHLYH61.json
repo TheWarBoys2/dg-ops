@@ -1,0 +1,20 @@
+{
+  "_id": "wTZVxuOmauHLYH61",
+  "name": "Add to the schedule",
+  "type": "script",
+  "img": "icons/svg/sun.svg",
+  "command": "const ops = game.modules.get(\"dg-ops\")?.api;\nif (!ops) return ui.notifications.warn(\"Delta Green: Ops Automation isn't active.\");\nif (!game.user.isGM) return ui.notifications.warn(\"That one is for the Handler.\");\nawait ops.reminderDialog();",
+  "scope": "global",
+  "folder": "XIYvY9oiHGojhZWc",
+  "sort": 3000000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {
+    "dg-ops": {
+      "description": "Schedule your own reminder on the game clock, once or repeating."
+    }
+  },
+  "author": null,
+  "_key": "!macros!wTZVxuOmauHLYH61"
+}

@@ -12,6 +12,8 @@ import * as state from "./state.mjs";
 import * as corruption from "./corruption.mjs";
 import * as gifts from "./gifts.mjs";
 import * as events from "./events.mjs";
+import * as night from "./nightworld.mjs";
+import { addSanPreCheck, onSanResult } from "../../core/extensions.mjs";
 
 let ready = false;
 
@@ -37,11 +39,14 @@ export function init() {
   state.registerStateHandlers();
   gifts.registerGiftActions();
   events.registerEvents();
+  night.registerNightWorld();
+  addSanPreCheck(night.sanPreCheck);
+  onSanResult(night.sanResult);
   Hooks.once("ready", () => document.body.classList.add("dgops-il-on"));
 
   const rerender = (app) => setTimeout(() => app.rendered && app.render(), 200);
   extendConsole({
-    card: corruption.consoleCard,
+    card: (a) => corruption.consoleCard(a) + night.consoleStrip(a),
     tiles: {
       "Impossible Landscapes": [
         ["ilStart", "Starting Corruption", "fas fa-eye", "Count each Agent's starting Corruption and confirm it (p.17).", null],
@@ -54,6 +59,7 @@ export function init() {
         ["ilTome", "Read a tome", "fas fa-book-skull", "Study time, SAN, Unnatural, Art and Corruption in one step (pp.348–350).", "agents"],
         ["ilInterference", "Interference", "fas fa-bolt", "The operator left the circle: misfortune in 4D6 hours (p.351).", "agents"],
         ["ilBottle", "Soul Bottle search", "fas fa-wine-bottle", "1D100 + Corruption every 8 hours in the labyrinth (p.344).", "agents"],
+        ["ilNight", "Night World", "fas fa-moon", "SAN loss held while they're in the Night World: see it, change it, apply it.", "agents"],
         ["ilPorcelain", "Metal & porcelain", "fas fa-gear", "Toggle on NPC tokens: odd damage rolls do only 1 (pp.338, 341).", "tokens"],
       ],
     },
@@ -114,6 +120,23 @@ export function init() {
         const a = this.need();
         if (a.length) await events.bottleSearchDialog(a);
       },
+      async ilNight() {
+        const a = this.need();
+        if (a.length) await night.nightWorldDialog(a);
+        rerender(this);
+      },
+      async ilNightPlus(ds) {
+        await night.holdLoss(await fromUuid(ds.uuid), 1, { source: "Handler's correction" });
+        rerender(this);
+      },
+      async ilNightMinus(ds) {
+        await night.holdLoss(await fromUuid(ds.uuid), -1, { source: "Handler's correction" });
+        rerender(this);
+      },
+      async ilNightApply(ds) {
+        await night.applyHeld(await fromUuid(ds.uuid));
+        rerender(this);
+      },
       async ilPorcelain() {
         const t = this.need("tokens").map((x) => x.actor).filter(Boolean);
         if (t.length) await events.toggleMetalPorcelain(t);
@@ -149,6 +172,15 @@ export function api() {
     openBottle: events.openBottle,
     destroyBottle: events.destroyBottle,
     toggleMetalPorcelain: events.toggleMetalPorcelain,
+    nightWorld: {
+      of: night.nightWorldOf,
+      hold: night.holdLoss,
+      apply: night.applyHeld,
+      setInside: night.setInside,
+      dialog: night.nightWorldDialog,
+      report: night.nightWorldReport,
+      TAG: night.TAG,
+    },
     who,
     TOMES,
     GIFTS,

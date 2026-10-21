@@ -47,8 +47,31 @@ const IL_MACROS = [
   ["Read a tome", "icons/svg/book.svg", "Study time, SAN, Unnatural, Art and Corruption in one step for the selected Agent (pp.348–350).", `${NEEDS_SELECTION}for (const a of sel) await il.readTome(a);`],
   ["Interference", "icons/svg/lightning.svg", "The selected operator left the circle: misfortune in 4D6 hours of game time (p.351).", `${NEEDS_SELECTION}for (const a of sel) await il.interference(a);`],
   ["Soul Bottle search", "icons/svg/acid.svg", "1D100 + Corruption after each 8 hours in the Whisper Labyrinth, now or on the game clock (p.344).", `${NEEDS_SELECTION}await il.bottleSearch(sel);`],
+  ["Night World: held SAN loss", "icons/svg/moon.svg", "See, change or apply the SAN loss held for the selected Agents while they're in the Night World.", `await il.nightWorld.dialog(il.who());`],
   ["Metal and porcelain", "icons/svg/mechanical-arm.svg", "Toggle on the selected NPCs: an odd damage or Lethality roll inflicts only 1 (pp.338, 341).", `${NEEDS_SELECTION}await il.toggleMetalPorcelain(sel);`],
 ];
+
+const CORE_PREAMBLE = `const ops = game.modules.get("dg-ops")?.api;
+if (!ops) return ui.notifications.warn("Delta Green: Ops Automation isn't active.");
+if (!game.user.isGM) return ui.notifications.warn("That one is for the Handler.");
+`;
+
+/** Added to the Time folder: [name, icon, description, body, sort] */
+const TIME_MACROS = [
+  ["Set date and time", "icons/svg/clockwork.svg", "Set the game clock to a date (or Day number) and time: move it, or just relabel it.", `await ops.setClockDialog();`, 2900000],
+  ["Add to the schedule", "icons/svg/sun.svg", "Schedule your own reminder on the game clock, once or repeating.", `await ops.reminderDialog();`, 3000000],
+];
+
+function writeTime() {
+  const pack = join(SRC, "handler-macros");
+  const dir = join(pack, readdirSync(pack).find((d) => d.startsWith("Time_")));
+  const folderId = dir.split("_").pop();
+  for (const [name, img, description, body, sort] of TIME_MACROS) {
+    const mid = id(`macro:core:${name}`);
+    const doc = { _id: mid, name, type: "script", img, command: `${CORE_PREAMBLE}${body}`, scope: "global", folder: folderId, sort, ownership: { default: 0 }, flags: { "dg-ops": { description } }, author: null, _key: `!macros!${mid}` };
+    writeFileSync(join(dir, `${name.replace(/[^A-Za-z0-9]/g, "_")}_${mid}.json`), `${JSON.stringify(doc, null, 2)}\n`);
+  }
+}
 
 function writeIl() {
   const pack = join(SRC, "handler-macros");
@@ -75,7 +98,10 @@ function countMacros(dir) {
   return n;
 }
 
-if (!process.argv.includes("--check")) writeIl();
+if (!process.argv.includes("--check")) {
+  writeIl();
+  writeTime();
+}
 for (const p of ["handler-macros", "agent-macros"]) {
   rmSync(join(OUT, p), { recursive: true, force: true });
   await compilePack(join(SRC, p), join(OUT, p), { recursive: true, log: false });

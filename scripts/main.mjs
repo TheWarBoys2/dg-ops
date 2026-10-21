@@ -8,6 +8,7 @@ import { applyPatches, onRoll, addFlagProvider } from "./core/patches.mjs";
 import { renderRequest, renderGroup, onRequestUpdated } from "./core/requests.mjs";
 import { onRenderMessage, button, registerAction } from "./core/chat.mjs";
 import { processDue, events, schedule } from "./core/scheduler.mjs";
+import * as clock from "./features/clock.mjs";
 import { hasSystemRolls } from "./core/system.mjs";
 import { filterDamage } from "./core/extensions.mjs";
 import * as sanity from "./features/sanity.mjs";
@@ -105,6 +106,11 @@ Hooks.once("ready", async () => {
 
   game.modules.get(MODULE_ID).api = {
     openConsole,
+    clockText: clock.clockText,
+    setClock: clock.setClock,
+    setClockDialog: clock.setClockDialog,
+    addReminder: clock.addReminder,
+    reminderDialog: clock.reminderDialog,
     openChase,
     sanTest: sanity.sanTest,
     sanDialog: sanity.sanDialog,

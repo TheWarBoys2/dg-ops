@@ -4,7 +4,7 @@ Rules automation for the **Delta Green** system (`deltagreen` **2.0.1**) on **Fo
 
 Page references are to the *Agent's Handbook* (2024 printing).
 
-> **Status:** v1.5.0. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
+> **Status:** v1.6.0. The rules engine has unit tests (21), and every flow, window included, has been exercised against a mock Foundry/Delta Green runtime (56 scenarios). The new Impossible Landscapes features have their own rules tests and mock-Foundry scenarios (see *Development*). Rules and page references were checked against the 2024 Agent's Handbook. It has **not yet run in a live Foundry world**. Try it in a scratch world first (see *First run checklist*).
 
 ---
 
@@ -203,8 +203,23 @@ Switch on **Impossible Landscapes campaign features** in Foundry's own *Configur
   - Someone who opens it and hits 0 SAN vanishes.
   - A destroyed bottle means every failed SAN roll takes the maximum loss from then on.
 - **Metal and porcelain (pp.338, 341).** Toggle it on the Clockwork Child or Marionette tokens. An odd damage roll or an odd Lethality roll then inflicts only 1, both in the attack window and on the system's damage cards.
+- **Night World: hold the SAN loss (house rule).** The SAN test dialog gets an *In the Night World* tickbox. When it's ticked, the test is rolled as usual (players still see pass or fail), but nothing comes off the sheet. The loss is added to that Agent's Night World tally, and only the Handler sees the number. You can also mark Agents as *in the Night World* (Console → Night World), and then every SAN test they take is held, with or without the tickbox.
+  - The Console roster shows the tally (Handler only) with −/+ to correct it and **Apply**. Apply takes the whole tally as **one** SAN loss, so 5+ can mean temporary insanity and the Breaking Point counts. It then clears the tally and marks them as out.
+  - The *Night World* tile and macro open a dialog for several Agents at once: see the recent entries, change the numbers, pick the category it's applied as, and apply.
+  - Fixed losses (a tome's flat SAN cost, for instance) and opening a Soul Bottle aren't held. Held losses don't count toward violence or helplessness adaptation, because they're applied as one lump.
 
 Not included: clown heights, fire effects, the Gold Bug, the Coquelicots Mask, handouts and statblocks. Melonia, the King's aura, Bond symptoms, fugitive heat, NPC archetypes and a campaign visual theme may come later.
+
+### Game clock and schedule
+
+The Console's top bar and *Clock & queue* tab show the game clock. **Set date & time…** sets it, either to a calendar date (for example Sat 14 Mar 2026, 23:00) or to Day 1, Day 2 and so on. There are two ways to set it:
+
+- **Move the clock:** game time passes (or goes back), and everything scheduled before the new time happens, including poisons, healing, daily upkeep and your own reminders. A jump of more than 60 days asks first.
+- **Just relabel it:** the clock now reads that date and time, but nothing on the schedule moves. Use this the first time, to say when the operation starts.
+
+The clock is kept by the module (game time plus an offset). Until you set it, the Console shows Foundry's own calendar as before.
+
+**Add to the schedule…** puts your own items on the game clock: a title and notes, *in* so many minutes, hours, days or weeks or *at* a date and time, repeating or once, either whispered to you or posted to everyone, and optionally about one Agent. When it comes up, it posts a card. Scheduled items show their date under the countdown, and you can cancel them from the list. Both are also macros in the *Time* folder.
 
 ### Already in the system, so left alone
 
@@ -246,6 +261,9 @@ ops.effectDialog(); ops.applySituationalEffect(actor, { preset: "gas", minutes: 
 ops.damageDialog(); ops.healDialog(); ops.toggleCondition(ops.STATUS.helpless);
 ops.teamReport(); ops.homeSceneDialog(); ops.afterTheCrisis();
 ops.backupAll(); ops.backupActor(actor); ops.restoreBackup(actor, backupId);
+ops.clockText(); ops.setClockDialog(); ops.reminderDialog();
+ops.setClock({ to: Date.parse("2026-03-14T23:00:00Z") / 1000, mode: "date", move: false });  // relabel; move: true advances game time
+ops.addReminder({ title: "The cult moves the body", notes: "Warehouse 9", delay: 6 * 3600, every: 0, show: "gm" });  // or at: <worldTime>
 
 // Only when Impossible Landscapes campaign features are on:
 const il = ops.il;
@@ -255,6 +273,9 @@ il.giftsDialog(actors); il.revealGift(actor);
 il.yellowSign(actors); il.interference(actor); il.readTome(actor, "redBook");
 il.bottleSearch(actors); il.openBottle(actor); il.destroyBottle(actor);
 il.toggleMetalPorcelain(npcs);
+il.nightWorld.of(actor);                    // { inside, held, log }
+il.nightWorld.hold(actor, 3); il.nightWorld.setInside(actor, true); il.nightWorld.apply(actor); il.nightWorld.dialog(actors);
+ops.sanTest({ actor, successLoss: "0", failureLoss: "1D6", source: "The Night Floors", tags: [il.nightWorld.TAG] });   // held, not applied
 ```
 
 ## How it hooks in (for maintenance)

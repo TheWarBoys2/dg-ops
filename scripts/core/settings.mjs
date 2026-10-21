@@ -135,6 +135,7 @@ export function registerSettings() {
   }
   game.settings.register(MODULE_ID, "queue", { scope: "world", config: false, type: Object, default: { catastrophes: [] } });
   game.settings.register(MODULE_ID, "schedule", { scope: "world", config: false, type: Array, default: [] });
+  game.settings.register(MODULE_ID, "clock", { scope: "world", config: false, type: Object, default: { mode: "auto", offset: 0 } });
   game.settings.register(MODULE_ID, "chases", { scope: "world", config: false, type: Object, default: {} });
   game.settings.register(MODULE_ID, "opPriority", { scope: "world", config: false, type: String, default: "normal" });
   game.settings.register(MODULE_ID, "activeTeam", { scope: "world", config: false, type: Object, default: { mode: "auto", folder: "", ids: [] } });
