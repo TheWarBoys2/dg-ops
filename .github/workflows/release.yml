@@ -1,9 +1,12 @@
-# Push a tag like v1.5.0 and this publishes a GitHub release with dg-ops.zip and module.json,
-# so Foundry can install or update the module from the manifest URL in module.json.
+# Publishes a GitHub release with dg-ops.zip and module.json whenever main carries a version
+# (module.json "version") that has no release yet, so Foundry can install or update the module
+# from the manifest URL in module.json. Can also be run by hand from the Actions tab.
 name: Release
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: [module.json, .github/workflows/release.yml]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -11,16 +14,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Version and whether it's already released
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="v$(node -p "require('./module.json').version")"
+          echo "tag=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "$v" >/dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Check the download URL points at this version
+        if: steps.v.outputs.exists == 'false'
+        run: grep -q "releases/download/${{ steps.v.outputs.tag }}/dg-ops.zip" module.json
       - uses: actions/setup-node@v4
+        if: steps.v.outputs.exists == 'false'
         with:
           node-version: 22
-      - run: npm ci
-      - run: npm test
-      - name: Check the tag matches module.json
-        run: test "v$(node -p "require('./module.json').version")" = "${GITHUB_REF_NAME}"
-      - run: npm run package
+      - if: steps.v.outputs.exists == 'false'
+        run: npm ci && npm test && npm run package
       - uses: softprops/action-gh-release@v2
+        if: steps.v.outputs.exists == 'false'
         with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.v.outputs.tag }}
           files: |
             dg-ops.zip
             module.json
