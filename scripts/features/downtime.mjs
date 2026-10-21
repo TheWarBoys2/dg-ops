@@ -14,6 +14,7 @@ import { sanCap } from "../rules/sanity.mjs";
 import * as H from "../rules/home.mjs";
 import { disordersOf, runForActor } from "./sanity.mjs";
 import { requestAction, registerContinuation, playerMustRoll } from "../core/requests.mjs";
+import { getStudySources } from "../core/extensions.mjs";
 
 registerContinuation("homePursuit", async ({ id }, ctx) => {
   await runPursuit(ctx.actor, id, { handOver: false });
@@ -296,11 +297,24 @@ export async function runPursuit(actor, id, { handOver = true } = {}) {
     }
     case "studyUnnatural": {
       const tomes = actor.itemTypes.tome ?? [];
+      // Campaign tomes (registered by optional rule sets) run their own study, in one step.
+      const extra = getStudySources();
+      const groups = [...new Set(extra.map((x) => x.group))];
+      const extraOpts = groups.map((g) => `<optgroup label="${esc(g)}">${extra.filter((x) => x.group === g).map((x) => `<option value="ext:${esc(x.id)}">${esc(x.label)}</option>`).join("")}</optgroup>`).join("");
       const r = await prompt({
         title: "Study the Unnatural",
-        content: `${field("Source", `<select name="t"><option value="">Other (case files, data…)</option>${tomes.map((t) => `<option value="${t.id}">${esc(t.name)} (+${t.system.unnaturalSkillIncrease}% Unnatural)</option>`).join("")}</select>`)}${field("Unnatural gain %", `<input type="number" name="n" value="${tomes[0]?.system.unnaturalSkillIncrease ?? 1}" style="width:5em">`)}<p class="hint">The Handler describes the results. One Bond loses 1D4.</p>`,
+        content: `${field("Source", `<select name="t"><option value="">Other (case files, data…)</option>${tomes.map((t) => `<option value="${t.id}">${esc(t.name)} (+${t.system.unnaturalSkillIncrease}% Unnatural)</option>`).join("")}${extraOpts}</select>`)}${field("Unnatural gain %", `<input type="number" name="n" value="${tomes[0]?.system.unnaturalSkillIncrease ?? 1}" style="width:5em">`, extra.length ? "Campaign tomes set their own gain." : "")}<p class="hint">The Handler describes the results. One Bond loses 1D4.</p>`,
       });
       if (!r) return;
+      if (String(r.data.t ?? "").startsWith("ext:")) {
+        const src = extra.find((x) => `ext:${x.id}` === r.data.t);
+        const out = (await src?.run(actor, { home: true })) ?? {};
+        outcomeLine = out.line ?? esc(src?.label ?? "");
+        notes.push(...(out.notes ?? []));
+        rolls.push(...(out.rolls ?? []));
+        fx = [{ kind: "bond", target: "chosen", amount: "-1d4" }];
+        break;
+      }
       const tome = r.data.t ? actor.items.get(r.data.t) : null;
       const gain = Number(r.data.n) || tome?.system.unnaturalSkillIncrease || 1;
       const un = Math.min(99, actor.system.skills.unnatural.proficiency + gain);

@@ -17,6 +17,7 @@ import { DISORDERS, disordersForCause, PERMANENT_INSANITY } from "../rules/disor
 import { disorderIdFor } from "./readiness.mjs";
 import { snapshot } from "../core/snapshot.mjs";
 import { teamOnScene } from "../core/team.mjs";
+import { runSanPreChecks, runSanResults } from "../core/extensions.mjs";
 
 const CAT_TIP = {
   violence: "Violence: three losses in a row without insanity adapts the Agent, at a cost to CHA and Bonds (p.73).",
@@ -61,6 +62,8 @@ function disorderDef(item) {
  * @param {object} [p.outcome]       An already-rolled SAN test outcome to use.
  * @param {number|null} [p.fixedLoss] Skip the test and lose exactly this much (e.g. braving suppression).
  * @param {number} [p.modifier]
+ * @param {string[]} [p.tags]       Labels for extensions (e.g. "il:yellowSign"); passed to their hooks.
+ * @param {boolean} [p.maxOnFail]   A failed roll takes the greatest possible loss.
  */
 export async function sanTest({
   actor,
@@ -75,12 +78,24 @@ export async function sanTest({
   modifier = 0,
   messageMode = undefined,
   manual = false,
+  tags = [],
+  maxOnFail = false,
 }) {
   if (!actor || !["agent", "npc"].includes(actor.type)) {
     ui.notifications.warn("Delta Green Ops: SAN tests need an Agent or NPC.");
     return null;
   }
-  const notes = [];
+  const params = { successLoss, failureLoss, category, victims, perVictim, source, fixedLoss, modifier, manual, tags, maxOnFail };
+  const pre = fixedLoss == null ? await runSanPreChecks({ actor, params }) : { skip: null, maxOnFail: false, notes: [] };
+  if (pre.skip) {
+    await postCard({ actor, title: `No SAN test${source ? `: ${esc(source)}` : ""}`, body: `<p>${esc(pre.skip)}</p>`, whisper: gmWhisper(), kind: "san" });
+    const sanNow = Number(actor.system.sanity?.value) || 0;
+    const skipped = { outcome: null, rawLoss: 0, loss: 0, sanAfter: sanNow, tempInsanity: false, breakingPointHit: false, permanentInsanity: false, skipped: true };
+    await runSanResults({ actor, params, result: skipped });
+    return skipped;
+  }
+  maxOnFail = maxOnFail || pre.maxOnFail;
+  const notes = [...pre.notes];
   const rolls = [];
   let rawLoss;
   let o = outcome;
@@ -111,9 +126,10 @@ export async function sanTest({
       rolledFailure = r.total;
       if (r.dice.length) rolls.push(r);
     }
-    rawLoss = computeSanLoss({ outcome: o, successFormula: successLoss, failureFormula: failureLoss, rolledSuccess, rolledFailure, victims, perVictim });
+    rawLoss = computeSanLoss({ outcome: o, successFormula: successLoss, failureFormula: failureLoss, rolledSuccess, rolledFailure, victims, perVictim, maxOnFail });
     if (o.critical && o.success) notes.push("Critical success: least possible loss.");
     if (o.fumble) notes.push("Fumble: greatest possible loss.");
+    else if (maxOnFail && !o.success) notes.push("Every failed SAN roll takes the greatest possible loss.");
     if (perVictim && victims > 1 && !o.success) notes.push(`+1 per victim beyond the first (${victims} victims), capped at the die's maximum.`);
   }
 
@@ -223,7 +239,9 @@ export async function sanTest({
     undo: loss > 0 || rawLoss > 0 ? { actorUuid: actor.uuid, snap } : null,
   });
 
-  return { outcome: o, rawLoss, loss, ...t, adapted: adaptResult?.becameAdapted ?? false };
+  const result = { outcome: o, rawLoss, loss, ...t, adapted: adaptResult?.becameAdapted ?? false };
+  await runSanResults({ actor, params, result });
+  return result;
 }
 
 async function offerProjection(actor, loss, sanBefore) {
@@ -638,6 +656,7 @@ export async function sanGroupCard(actors, params) {
 registerContinuation("sanRow", async ({ params }, ctx) => {
   const r = await sanTest({ actor: ctx.actor, ...params });
   if (!r) return { label: "No test" };
+  if (r.skipped) return { pass: true, outcome: null, label: "No test needed", gm: "skipped by a campaign rule" };
   const o = r.outcome;
   const roll = o?.auto ? "adapted" : `rolled ${o?.total}`;
   return {

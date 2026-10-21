@@ -1,0 +1,20 @@
+{
+  "_id": "KvwMdqqZeaYxDn0T",
+  "name": "SAN test: selected Unnatural",
+  "type": "script",
+  "img": "icons/svg/eye.svg",
+  "command": "const ops = game.modules.get(\"dg-ops\")?.api;\nif (!ops) return ui.notifications.warn(\"Delta Green: Ops Automation isn't active.\");\nif (!game.user.isGM) return ui.notifications.warn(\"That one is for the Handler.\");\nconst u = [...game.user.targets].map(t => t.actor).find(a => a?.type === \"unnatural\") ?? ops.selected().find(a => a.type === \"unnatural\");\nif (!u) return ui.notifications.warn(\"Select or target the Unnatural creature.\");\nconst s = u.system.sanity ?? {};\nconst agents = ops.selected().filter(a => a.type !== \"unnatural\");\nops.sanGroupCard(agents.length ? agents : ops.team(), { successLoss: s.successLoss ?? \"0\", failureLoss: s.failedLoss ?? \"1D6\", category: \"unnatural\", source: u.name });",
+  "scope": "global",
+  "folder": "EBTA3jfv69Lr0Sbg",
+  "sort": 200000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {
+    "dg-ops": {
+      "description": "Uses the creature's own SAN loss. Everyone selected rolls (or the whole team if only the creature is selected)."
+    }
+  },
+  "author": null,
+  "_key": "!macros!KvwMdqqZeaYxDn0T"
+}

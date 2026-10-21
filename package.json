@@ -1,0 +1,17 @@
+{
+  "name": "dg-ops",
+  "version": "1.5.0",
+  "private": true,
+  "type": "module",
+  "description": "Delta Green: Ops Automation (Foundry VTT module) — development tooling.",
+  "scripts": {
+    "test": "node test/rules.test.mjs && node test/scenarios.mjs",
+    "lint": "eslint scripts tools test",
+    "build:packs": "node tools/build-packs.mjs",
+    "package": "node tools/build-packs.mjs && node tools/package.mjs"
+  },
+  "devDependencies": {
+    "@foundryvtt/foundryvtt-cli": "3.0.4",
+    "eslint": "9.39.1"
+  }
+}

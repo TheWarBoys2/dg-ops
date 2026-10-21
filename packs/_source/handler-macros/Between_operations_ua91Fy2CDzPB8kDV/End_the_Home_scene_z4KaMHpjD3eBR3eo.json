@@ -1,0 +1,20 @@
+{
+  "_id": "z4KaMHpjD3eBR3eo",
+  "name": "End the Home scene",
+  "type": "script",
+  "img": "icons/svg/door-exit.svg",
+  "command": "const ops = game.modules.get(\"dg-ops\")?.api;\nif (!ops) return ui.notifications.warn(\"Delta Green: Ops Automation isn't active.\");\nif (!game.user.isGM) return ui.notifications.warn(\"That one is for the Handler.\");\nconst ok = await foundry.applications.api.DialogV2.confirm({ window: { title: \"End the Home scene?\" }, content: \"<p>Clears the damaged-Bond marks for the team. Agents are backed up first.</p>\" });\nif (!ok) return;\nops.endHome(ops.team());",
+  "scope": "global",
+  "folder": "ua91Fy2CDzPB8kDV",
+  "sort": 2100000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {
+    "dg-ops": {
+      "description": "Clears the damaged-Bond marks. Agents are backed up first."
+    }
+  },
+  "author": null,
+  "_key": "!macros!z4KaMHpjD3eBR3eo"
+}

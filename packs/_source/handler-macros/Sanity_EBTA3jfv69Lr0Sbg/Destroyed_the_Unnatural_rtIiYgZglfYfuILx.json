@@ -1,0 +1,20 @@
+{
+  "_id": "rtIiYgZglfYfuILx",
+  "name": "Destroyed the Unnatural",
+  "type": "script",
+  "img": "icons/svg/sun.svg",
+  "command": "const ops = game.modules.get(\"dg-ops\")?.api;\nif (!ops) return ui.notifications.warn(\"Delta Green: Ops Automation isn't active.\");\nif (!game.user.isGM) return ui.notifications.warn(\"That one is for the Handler.\");\nops.destroyedUnnatural();",
+  "scope": "global",
+  "folder": "EBTA3jfv69Lr0Sbg",
+  "sort": 300000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {
+    "dg-ops": {
+      "description": "Restores the lowest possible loss to each Agent involved (p.75)."
+    }
+  },
+  "author": null,
+  "_key": "!macros!rtIiYgZglfYfuILx"
+}

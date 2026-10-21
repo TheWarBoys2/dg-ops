@@ -1,0 +1,20 @@
+{
+  "_id": "YqYkGr2Rbdo7IVYp",
+  "name": "SAN test",
+  "type": "script",
+  "img": "icons/svg/terror.svg",
+  "command": "const ops = game.modules.get(\"dg-ops\")?.api;\nif (!ops) return ui.notifications.warn(\"Delta Green: Ops Automation isn't active.\");\nif (!game.user.isGM) return ui.notifications.warn(\"That one is for the Handler.\");\nconst selected = ops.selected();\nops.sanDialog(selected.length ? selected : ops.team());",
+  "scope": "global",
+  "folder": "EBTA3jfv69Lr0Sbg",
+  "sort": 100000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {
+    "dg-ops": {
+      "description": "Posts a SAN card for the selected tokens (or the whole team). Pick the threat from the p.67 list. Each player rolls their own; you see the numbers."
+    }
+  },
+  "author": null,
+  "_key": "!macros!YqYkGr2Rbdo7IVYp"
+}

@@ -1,0 +1,20 @@
+{
+  "_id": "YS4Qkl3fRIFqSJ5n",
+  "name": "Situational effect",
+  "type": "script",
+  "img": "icons/svg/daze.svg",
+  "command": "const ops = game.modules.get(\"dg-ops\")?.api;\nif (!ops) return ui.notifications.warn(\"Delta Green: Ops Automation isn't active.\");\nif (!game.user.isGM) return ui.notifications.warn(\"That one is for the Handler.\");\nops.effectDialog();",
+  "scope": "global",
+  "folder": "oTYgfJpLYRnNvP2I",
+  "sort": 1400000,
+  "ownership": {
+    "default": 0
+  },
+  "flags": {
+    "dg-ops": {
+      "description": "Pepper spray, tear gas, intoxication, darkness or your own modifier, with a game-time duration."
+    }
+  },
+  "author": null,
+  "_key": "!macros!YS4Qkl3fRIFqSJ5n"
+}

@@ -19,6 +19,7 @@ export const SAN_CATEGORIES = ["violence", "helplessness", "unnatural", "other"]
  * @param {number} p.rolledFailure   Rolled value of the failure formula (ignored on fumble).
  * @param {number} [p.victims=1]
  * @param {boolean} [p.perVictim=false]  Whether the trauma uses the per-victim rule.
+ * @param {boolean} [p.maxOnFail=false]  Every failure takes the greatest possible loss (campaign rules).
  */
 export function computeSanLoss({
   outcome,
@@ -28,6 +29,7 @@ export function computeSanLoss({
   rolledFailure,
   victims = 1,
   perVictim = false,
+  maxOnFail = false,
 }) {
   const sRange = formulaRange(successFormula) ?? { min: rolledSuccess, max: rolledSuccess };
   const fRange = formulaRange(failureFormula) ?? { min: rolledFailure, max: rolledFailure };
@@ -35,7 +37,7 @@ export function computeSanLoss({
     if (outcome.critical) return Math.max(0, sRange.min);
     return Math.max(0, Number(rolledSuccess) || 0);
   }
-  if (outcome.fumble) return Math.max(0, fRange.max);
+  if (outcome.fumble || maxOnFail) return Math.max(0, fRange.max);
   let loss = Math.max(0, Number(rolledFailure) || 0);
   if (perVictim && victims > 1) loss = Math.min(loss + (victims - 1), fRange.max);
   return loss;

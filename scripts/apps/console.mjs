@@ -94,6 +94,24 @@ const TILES = {
   ],
 };
 
+/**
+ * Optional rule sets add to the Console without the Console knowing about them:
+ *  - card(actor) → HTML appended to each roster card (return "" to add nothing),
+ *  - tiles: { group: [[action, label, icon, hint, needs], …] } added to Actions,
+ *  - actions: { name: fn(dataset, ev) } called as this.on_<name>, with `this` the Console.
+ */
+const extensions = [];
+export function extendConsole({ card = null, tiles = {}, actions = {} } = {}) {
+  extensions.push({ card, tiles });
+  for (const [k, fn] of Object.entries(actions)) HandlerConsole.prototype[`on_${k}`] = fn;
+}
+
+function allTiles() {
+  const out = { ...TILES };
+  for (const e of extensions) for (const [g, list] of Object.entries(e.tiles ?? {})) out[g] = [...(out[g] ?? []), ...list];
+  return out;
+}
+
 export class HandlerConsole extends DGOpsApp {
   static BANNER = "Handler console";
 
@@ -179,6 +197,7 @@ export class HandlerConsole extends DGOpsApp {
       </div>
       <div class="dgops-agent__bars">${bar("hp", s.health.value, s.health.max)}${bar("wp", s.wp.value, s.wp.max)}${bar("san", s.sanity.value, s.sanity.max ?? 99, s.sanity.currentBreakingPoint)}</div>
       ${flags.length ? `<div class="dgops-agent__flags">${flags.join("")}</div>` : ""}
+      ${extensions.map((e) => e.card?.(a) ?? "").join("")}
       <div class="dgops-agent__tools">
         <a data-dgops-app="sheet" data-uuid="${a.uuid}" data-tooltip="Sheet"><i class="fas fa-file-lines"></i></a>
         <a data-dgops-app="kit" data-uuid="${a.uuid}" class="dgops-kit-link" data-status="${analyzeActor(a).status}" data-tooltip="Ops Kit"><i class="fas fa-briefcase-medical"></i></a>
@@ -233,7 +252,7 @@ export class HandlerConsole extends DGOpsApp {
   renderActions() {
     const who = selectedActors();
     const whoText = who.length ? who.map((a) => esc(a.name)).join(", ") : "nobody picked";
-    const groups = Object.entries(TILES)
+    const groups = Object.entries(allTiles())
       .map(
         ([g, tiles]) => `<section class="dgops-tiles"><h3>${esc(g)}</h3><div class="dgops-tiles__grid">${tiles
           .map(([act, label, icon, hint, needs]) => {
